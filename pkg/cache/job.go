@@ -3,20 +3,19 @@ package cache
 import "time"
 
 type clearJob struct {
-	Interval time.Duration
-	stop     chan struct{``}
+	interval time.Duration
+	stop     chan struct{}
 }
 
 func (j *clearJob) Run(c *cache) {
-	j.stop = make(chan struct{})
-
-	tick := time.Tick(j.Interval)
+	ticker := time.NewTicker(j.interval)
 
 	for {
 		select {
-		case <-tick:
+		case <-ticker.C:
 			c.DeleteExpired()
 		case <-j.stop:
+			ticker.Stop()
 			return
 		}
 	}
@@ -28,7 +27,8 @@ func stopClearer(c *Cache) {
 
 func runClearer(c *cache, ci time.Duration) {
 	j := &clearJob{
-		Interval: ci,
+		interval: ci,
+		stop:     make(chan struct{}),
 	}
 
 	c.clearer = j
