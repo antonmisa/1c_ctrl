@@ -1,0 +1,13 @@
+app:
+  path_to_rac: "C:/Program Files/1cv8/8.3.14.1857/bin/rac.exe"
+  path_to_1c: "C:/Program Files/1cv8/8.3.14.1857/bin/1cv8.exe"
+
+http:
+  port: '8080'
+
+logger:
+  level: 'debug'  
+
+redis:
+  addr: ''
+  ttl: 10
