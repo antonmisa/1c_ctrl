@@ -1,0 +1,232 @@
+basePath: /v1
+definitions:
+  entity.Cluster:
+    properties:
+      host:
+        example: localhost
+        type: string
+      id:
+        example: UUID like
+        type: string
+      name:
+        example: name as text
+        type: string
+      port:
+        example: "1541"
+        type: string
+    type: object
+  entity.Connection:
+    properties:
+      id:
+        example: UUID like
+        type: string
+    type: object
+  entity.Infobase:
+    properties:
+      cluster:
+        example: UUID like
+        type: string
+      desc:
+        example: some comments
+        type: string
+      id:
+        example: UUID like
+        type: string
+      name:
+        example: name as text
+        type: string
+    type: object
+  entity.Session:
+    properties:
+      appid:
+        example: Application identifier
+        type: string
+      host:
+        example: Host of the user
+        type: string
+      id:
+        example: UUID like
+        type: string
+      idbase:
+        example: UUID of infobase
+        type: string
+      idbconn:
+        example: UUID of connection
+        type: string
+      idproc:
+        example: UUID of process
+        type: string
+      uname:
+        example: Name of the user
+        type: string
+    type: object
+  v1.clusterResponse:
+    properties:
+      clusters:
+        items:
+          $ref: '#/definitions/entity.Cluster'
+        type: array
+    type: object
+  v1.connectionResponse:
+    properties:
+      connections:
+        items:
+          $ref: '#/definitions/entity.Connection'
+        type: array
+    type: object
+  v1.infobaseResponse:
+    properties:
+      infobases:
+        items:
+          $ref: '#/definitions/entity.Infobase'
+        type: array
+    type: object
+  v1.response:
+    properties:
+      error:
+        example: message
+        type: string
+    type: object
+  v1.sessionResponse:
+    properties:
+      sessions:
+        items:
+          $ref: '#/definitions/entity.Session'
+        type: array
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Using a 1C cluster control service over http
+  title: 1C cluster control service
+  version: "1.0"
+paths:
+  /cluster/:cluster/connection/list:
+    get:
+      description: Show all connections with identifiers for current cluster
+      operationId: connections
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.connectionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.response'
+      summary: Show all connections in cluster
+      tags:
+      - connection list
+  /cluster/:cluster/infobase/:infobase/connection/list:
+    get:
+      description: Show all connections with identifiers for current infobase in cluster
+      operationId: connectionsByInfobase
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.connectionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.response'
+      summary: Show all connections in infobase
+      tags:
+      - connection list infobase
+  /cluster/:cluster/infobase/:infobase/session/list:
+    get:
+      description: Show all sessions with identifiers for current infobase in cluster
+      operationId: sessionsByInfobase
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.sessionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.response'
+      summary: Show all sessions in infobase
+      tags:
+      - session list infobase
+  /cluster/:cluster/infobase/list:
+    get:
+      description: Show all infobases with identifiers for current cluster
+      operationId: infobases
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.infobaseResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.response'
+      summary: Show all infobases in cluster
+      tags:
+      - infobase list
+  /cluster/:cluster/session/list:
+    get:
+      description: Show all sessions with identifiers for current cluster
+      operationId: sessions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.sessionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/v1.response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.response'
+      summary: Show all sessions in cluster
+      tags:
+      - session list
+  /cluster/list:
+    get:
+      description: Show all clusters with identifiers
+      operationId: clusters
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.clusterResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.response'
+      summary: Show clusters
+      tags:
+      - cluster list
+swagger: "2.0"

@@ -5,12 +5,14 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/antonmisa/1cctl/config"
-	v1 "github.com/antonmisa/1cctl/internal/controller/v1"
+	v1 "github.com/antonmisa/1cctl/internal/controller/http/v1"
 	"github.com/antonmisa/1cctl/internal/usecase"
+	ucbackup "github.com/antonmisa/1cctl/internal/usecase/backup"
 	uccache "github.com/antonmisa/1cctl/internal/usecase/cache"
 	ucpipe "github.com/antonmisa/1cctl/internal/usecase/pipe"
 	"github.com/antonmisa/1cctl/pkg/cache"
@@ -20,22 +22,32 @@ import (
 )
 
 func Run(cfg *config.Config) {
-	l := logger.New(cfg.Log.Level)
-
-	c, err := cache.New(cfg.Redis.Addr, cfg.Redis.TTL)
+	l, err := logger.New(cfg.Log.Path, cfg.Log.Level)
 	if err != nil {
-		l.Fatal(fmt.Errorf("app - RunHTTP - cache.New: %w", err))
+		l.Fatal(fmt.Errorf("app - Run - logger.New: %w", err))
+	}
+
+	c, err := cache.New(cfg.Cache.TTL * time.Minute)
+	if err != nil {
+		l.Fatal(fmt.Errorf("app - Run - cache.New: %w", err))
 	}
 
 	p, err := pipe.New(cfg.App.PathToRAC)
 	if err != nil {
-		l.Fatal(fmt.Errorf("app - RunHTTP - pipe.New: %w", err))
+		l.Fatal(fmt.Errorf("app - Run - pipe.New: %w", err))
+	}
+
+	cb, err := ucbackup.New(cfg.App.PathTo1C)
+
+	if err != nil {
+		l.Fatal(fmt.Errorf("app - Run - ucbackup.New: %w", err))
 	}
 
 	// Use case
 	ctrlUseCase := usecase.New(
 		uccache.New(c),
 		ucpipe.New(p),
+		cb,
 	)
 
 	// HTTP Server
@@ -59,5 +71,4 @@ func Run(cfg *config.Config) {
 	if err != nil {
 		l.Error(fmt.Errorf("app - RunHTTP - httpServer.Shutdown: %w", err))
 	}
-
 }

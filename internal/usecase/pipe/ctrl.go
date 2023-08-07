@@ -5,336 +5,807 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"strings"
+	"sync"
+	"time"
 
 	"github.com/antonmisa/1cctl/internal/entity"
+	uc "github.com/antonmisa/1cctl/internal/usecase"
 	"github.com/antonmisa/1cctl/pkg/pipe"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
 	initialSize int = 10
-	notFound        = Error("key not found")
+
+	defaultBlockTime time.Duration = 60
+
+	initialBlockLimitSize int = 50
+
+	formatDate string = "01-02-2006 15:04:05"
+
+	keyInfobase   string = "infobase"
+	keyConnection string = "connection"
+	keyProcess    string = "process"
+	keyHost       string = "host"
+	keyName       string = "name"
+)
+
+var (
+	ErrNotFound          = errors.New("key not found")
+	ErrInfobaseIsEmpty   = errors.New("infobase is empty")
+	ErrSessionIsEmpty    = errors.New("session is empty")
+	ErrConnectionIsEmpty = errors.New("connection is empty")
 )
 
 // CtrlPipe -.
 type CtrlPipe struct {
-	*pipe.Pipe
+	h Helper
+
+	pipe pipe.Piper
 }
 
+var _ uc.CtrlPipe = (*CtrlPipe)(nil)
+
 // New -.
-func New(p *pipe.Pipe) *CtrlPipe {
+func New(p pipe.Piper) *CtrlPipe {
 	ctrl := &CtrlPipe{
-		p,
+		h:    Helper{},
+		pipe: p,
 	}
 
 	return ctrl
 }
 
 // GetClusters -.
-func (r *CtrlPipe) GetClusters(ctx context.Context) ([]entity.Cluster, error) {
-	cmd, stdout, err := r.Pipe.Run("cluster", "list")
+func (r *CtrlPipe) GetClusters(ctx context.Context, entrypoint string) ([]entity.Cluster, error) {
+	args := []string{entrypoint, "cluster", "list"}
+
+	cmd, stdout, err := r.pipe.Run(ctx, args...)
 	if err != nil {
-		return nil, fmt.Errorf("ctrlpipe - getclusters - error opening pipe: %w", err)
+		return nil, fmt.Errorf("ctrlpipe - getclusters - r.pipe.Run: %w", err)
 	}
 
-	buf := bufio.NewReader(stdout)
-	num := 0
-
-	cmd.Start()
 	defer cmd.Cancel()
+	defer stdout.Close()
 
-	data := make([]entity.Cluster, initialSize)
+	var wg sync.WaitGroup
 
-	var cluster, emptyCluster entity.Cluster
+	datas := make(chan entity.Cluster)
+	errs := make(chan error)
+	quit := make(chan struct{})
 
-	doWork := true
-	for doWork {
-		line, _, err := buf.ReadLine()
-		if err != nil && err != io.EOF {
-			return nil, fmt.Errorf("ctrlpipe - getclusters - error reading pipe: %w", err)
-		}
+	defer close(quit)
+	defer close(errs)
+	defer close(datas)
 
-		if err == io.EOF {
-			doWork = false
-		}
+	if err = cmd.Start(); err != nil {
+		//break all
+		return nil, fmt.Errorf("ctrlpipe - getclusters - cmd.Start: %w", err)
+	}
 
-		sline := string(line)
-		key, value, err := r.GetKeyValue(sline, ':')
+	wg.Add(1)
 
-		if err != nil && errors.Is(err, notFound) {
-			continue
-		}
+	go func() {
+		defer wg.Done()
 
-		if err != nil && !errors.Is(err, notFound) {
-			return nil, fmt.Errorf("ctrlpipe - getclusters - error parsing line: %w", err)
-		}
+		var data, emptyData entity.Cluster
 
-		switch key {
-		case "cluster":
-			if cluster != emptyCluster {
-				data = append(data, cluster)
-				num += 1
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			line := scanner.Text()
+
+			key, value, err := r.h.GetKeyValue(line, ':')
+
+			if err != nil && errors.Is(err, ErrNotFound) {
+				continue
 			}
 
-			cluster = entity.Cluster{}
-			cluster.ID = value
-		case "host":
-			cluster.Host = value
-		case "port":
-			cluster.Port = value
-		case "name":
-			cluster.Name = value
+			if err != nil && !errors.Is(err, ErrNotFound) {
+				errs <- fmt.Errorf("ctrlpipe - getclusters - error parsing line: %w", err)
+
+				return
+			}
+
+			switch key {
+			case "cluster":
+				if data != emptyData {
+					datas <- data
+				}
+
+				data = entity.Cluster{}
+				data.ID = value
+			case keyHost:
+				data.Host = value
+			case "port":
+				data.Port = value
+			case keyName:
+				data.Name = value
+			}
+		}
+
+		if data != emptyData {
+			datas <- data
+		}
+
+		if err := scanner.Err(); err != nil {
+			errs <- fmt.Errorf("ctrlpipe - getclusters - scanner.Err: %w", err)
+		}
+	}()
+
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+
+		if err = cmd.Wait(); err != nil {
+			errs <- fmt.Errorf("ctrlpipe - getclusters - cmd.Wait: %w", err)
+		}
+		quit <- struct{}{}
+	}()
+
+	var errg error
+
+	rv := make([]entity.Cluster, 0, initialSize)
+
+	num := 0
+
+	for {
+		select {
+		case data := <-datas:
+			rv = append(rv, data)
+			num++
+		case errg = <-errs:
+			cmd.Cancel()
+		case <-quit:
+			wg.Wait()
+
+			if errg != nil {
+				return nil, errg
+			}
+
+			return rv[:num:num], errg
 		}
 	}
-
-	if cluster != emptyCluster {
-		data = append(data, cluster)
-		num += 1
-	}
-
-	return data[:num:num], nil
 }
 
 // GetInfobases -.
-func (r *CtrlPipe) GetInfobases(ctx context.Context, cluster entity.Cluster) ([]entity.Infobase, error) {
-	cmd, stdout, err := r.Pipe.Run("infobase", fmt.Sprintf("--cluster=%s", cluster.ID), "summary", "list")
+func (r *CtrlPipe) GetInfobases(ctx context.Context, entrypoint string, cluster entity.Cluster, clusterCred entity.Credentials) ([]entity.Infobase, error) {
+	args := []string{entrypoint, "infobase", "summary", "list", "--cluster", cluster.ID}
+
+	if clusterCred != (entity.Credentials{}) {
+		args = append(args, []string{"--cluster-user", clusterCred.Name, "--cluster-pwd", clusterCred.Pwd}...)
+	}
+
+	cmd, stdout, err := r.pipe.Run(ctx, args...)
 	if err != nil {
 		return nil, fmt.Errorf("ctrlpipe - getinfobases - error opening pipe: %w", err)
 	}
 
-	buf := bufio.NewReader(stdout)
-	num := 0
-
-	cmd.Start()
 	defer cmd.Cancel()
+	defer stdout.Close()
 
-	data := make([]entity.Infobase, initialSize)
+	var wg sync.WaitGroup
 
-	var ib, emptyIB entity.Infobase
+	datas := make(chan entity.Infobase)
+	errs := make(chan error)
+	quit := make(chan struct{})
 
-	doWork := true
-	for doWork {
-		line, _, err := buf.ReadLine()
-		if err != nil && err != io.EOF {
-			return nil, fmt.Errorf("ctrlpipe - getinfobases - error reading pipe: %w", err)
+	defer close(quit)
+	defer close(errs)
+	defer close(datas)
+
+	if err = cmd.Start(); err != nil {
+		//break all
+		return nil, fmt.Errorf("ctrlpipe - getinfobases - cmd.Start: %w", err)
+	}
+
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+
+		if err := cmd.Wait(); err != nil {
+			errs <- err
 		}
+		quit <- struct{}{}
+	}()
 
-		if err == io.EOF {
-			doWork = false
-		}
+	wg.Add(1)
 
-		sline := string(line)
-		key, value, err := r.GetKeyValue(sline, ':')
+	go func() {
+		defer wg.Done()
 
-		if err != nil && errors.Is(err, notFound) {
-			continue
-		}
+		var data, emptyData entity.Infobase
 
-		if err != nil && !errors.Is(err, notFound) {
-			return nil, fmt.Errorf("ctrlpipe - getinfobases - error parsing line: %w", err)
-		}
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			line := scanner.Text()
 
-		switch key {
-		case "infobase":
-			if ib != emptyIB {
-				data = append(data, ib)
-				num += 1
+			key, value, err := r.h.GetKeyValue(line, ':')
+
+			if err != nil && errors.Is(err, ErrNotFound) {
+				continue
 			}
 
-			ib = entity.Infobase{ClusterID: cluster.ID}
-			ib.ID = value
-		case "descr":
-			ib.Desc = value
-		case "name":
-			ib.Name = value
+			if err != nil && !errors.Is(err, ErrNotFound) {
+				errs <- fmt.Errorf("ctrlpipe - getinfobases - error parsing line: %w", err)
+
+				return
+			}
+
+			switch key {
+			case keyInfobase:
+				if data != emptyData {
+					datas <- data
+				}
+
+				data = entity.Infobase{}
+				data.ID = value
+			case "descr":
+				data.Desc = value
+			case keyName:
+				data.Name = value
+			}
+		}
+
+		if data != emptyData {
+			datas <- data
+		}
+
+		if err := scanner.Err(); err != nil {
+			errs <- fmt.Errorf("ctrlpipe - getinfobases - scanner.Err: %w", err)
+		}
+	}()
+
+	var errg error
+
+	rv := make([]entity.Infobase, 0, initialSize)
+
+	num := 0
+
+	for {
+		select {
+		case data := <-datas:
+			rv = append(rv, data)
+			num++
+		case errg = <-errs:
+			cmd.Cancel()
+		case <-quit:
+			wg.Wait()
+
+			if errg != nil {
+				return nil, errg
+			}
+
+			return rv[:num:num], errg
 		}
 	}
-
-	if ib != emptyIB {
-		data = append(data, ib)
-		num += 1
-	}
-
-	return data[:num:num], nil
 }
 
 // GetSessions -.
-func (r *CtrlPipe) GetSessions(ctx context.Context, cluster entity.Cluster, infobase entity.Infobase) ([]entity.Session, error) {
-	filterByInfobase := ""
-	if infobase != (entity.Infobase{}) {
-		filterByInfobase = fmt.Sprintf("--infobase=%s", infobase.ID)
+func (r *CtrlPipe) GetSessions(ctx context.Context, entrypoint string, cluster entity.Cluster, infobase entity.Infobase, clusterCred entity.Credentials) ([]entity.Session, error) {
+	args := []string{entrypoint, "session", "list", "--cluster", cluster.ID}
+
+	if clusterCred != (entity.Credentials{}) {
+		args = append(args, []string{"--cluster-user", clusterCred.Name, "--cluster-pwd", clusterCred.Pwd}...)
 	}
 
-	cmd, stdout, err := r.Pipe.Run("session", fmt.Sprintf("--cluster=%s", cluster.ID), "list", filterByInfobase)
+	if infobase != (entity.Infobase{}) {
+		args = append(args, []string{"--infobase", infobase.ID}...)
+	}
+
+	cmd, stdout, err := r.pipe.Run(ctx, args...)
 	if err != nil {
 		return nil, fmt.Errorf("ctrlpipe - getsessions - error opening pipe: %w", err)
 	}
 
-	buf := bufio.NewReader(stdout)
-	num := 0
-
-	cmd.Start()
 	defer cmd.Cancel()
+	defer stdout.Close()
 
-	data := make([]entity.Session, initialSize)
+	var wg sync.WaitGroup
 
-	var ses, emptySes entity.Session
+	datas := make(chan entity.Session)
+	errs := make(chan error)
+	quit := make(chan struct{})
 
-	doWork := true
-	for doWork {
-		line, _, err := buf.ReadLine()
-		if err != nil && err != io.EOF {
-			return nil, fmt.Errorf("ctrlpipe - getsessions - error reading pipe: %w", err)
+	defer close(quit)
+	defer close(errs)
+	defer close(datas)
+
+	if err = cmd.Start(); err != nil {
+		//break all
+		return nil, fmt.Errorf("ctrlpipe - getsessions - cmd.Start: %w", err)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		if err := cmd.Wait(); err != nil {
+			errs <- err
 		}
+		quit <- struct{}{}
+	}()
 
-		if err == io.EOF {
-			doWork = false
-		}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 
-		sline := string(line)
-		key, value, err := r.GetKeyValue(sline, ':')
+		var data, emptyData entity.Session
 
-		if err != nil && errors.Is(err, notFound) {
-			continue
-		}
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			line := scanner.Text()
 
-		if err != nil && !errors.Is(err, notFound) {
-			return nil, fmt.Errorf("ctrlpipe - getsessions - error parsing line: %w", err)
-		}
+			key, value, err := r.h.GetKeyValue(line, ':')
 
-		switch key {
-		case "session":
-			if ses != emptySes {
-				data = append(data, ses)
-				num += 1
+			if err != nil && errors.Is(err, ErrNotFound) {
+				continue
 			}
 
-			ses = entity.Session{}
-			ses.ID = value
-		case "infobase":
-			ses.InfobaseID = value
-		case "connection":
-			ses.ConnectionID = value
-		case "process":
-			ses.ProcessID = value
-		case "user-name":
-			ses.UserName = value
-		case "host":
-			ses.Host = value
-		case "app-id":
-			ses.AppID = value
+			if err != nil && !errors.Is(err, ErrNotFound) {
+				errs <- fmt.Errorf("ctrlpipe - getsessions - error parsing line: %w", err)
+
+				return
+			}
+
+			switch key {
+			case "session":
+				if data != emptyData {
+					datas <- data
+				}
+
+				data = entity.Session{}
+				data.ID = value
+			case keyInfobase:
+				data.InfobaseID = value
+			case keyConnection:
+				data.ConnectionID = value
+			case keyProcess:
+				data.ProcessID = value
+			case "user-name":
+				data.UserName = value
+			case keyHost:
+				data.Host = value
+			case "app-id":
+				data.AppID = value
+			}
+		}
+
+		if data != emptyData {
+			datas <- data
+		}
+
+		if err := scanner.Err(); err != nil {
+			errs <- fmt.Errorf("ctrlpipe - getsessions - scanner.Err: %w", err)
+		}
+	}()
+
+	var errg error
+
+	rv := make([]entity.Session, 0, initialSize)
+
+	num := 0
+
+	for {
+		select {
+		case data := <-datas:
+			rv = append(rv, data)
+			num++
+		case errg = <-errs:
+			cmd.Cancel()
+		case <-quit:
+			wg.Wait()
+
+			if errg != nil {
+				return nil, errg
+			}
+
+			return rv[:num:num], errg
 		}
 	}
-
-	if ses != emptySes {
-		data = append(data, ses)
-		num += 1
-	}
-
-	return data[:num:num], nil
 }
 
-func (r *CtrlPipe) DisableSessions(ctx context.Context, infobase entity.Infobase) error {
-	cmd, _, err := r.Pipe.Run("session", fmt.Sprintf("--cluster=%s", infobase.ClusterID),
-		"infobase", "update", fmt.Sprintf("--infobase=%s", infobase.ID),
-		fmt.Sprintf("--denied-from=%s", infobase.ID),
-		fmt.Sprintf("--denied-message=%s", "БАЗА ЗАКРЫТА НА СОЗДАНИЕ РЕЗЕРВНОЙ КОПИИ"),
-		fmt.Sprintf("--denied-to=%s", infobase.ID),
-		"--permission-code=12345",
-		"--scheduled-jobs-deny=on",
-		"--session-deny=on")
-	if err != nil {
-		return fmt.Errorf("ctrlpipe - DisableSessions - error opening pipe: %w", err)
+func (r *CtrlPipe) DisableSessions(ctx context.Context, entrypoint string, cluster entity.Cluster, infobase entity.Infobase, clusterCred entity.Credentials, infobaseCred entity.Credentials, code string) error {
+	now := time.Now()
+
+	if infobase == (entity.Infobase{}) {
+		return fmt.Errorf("ctrlpipe - disablesessions: %w", ErrInfobaseIsEmpty)
 	}
 
-	cmd.Start()
+	args := []string{entrypoint, "infobase", "update",
+		"--cluster", cluster.ID,
+		"--infobase", infobase.ID,
+		"--denied-from", now.Format(formatDate),
+		"--denied-message", "БАЗА ЗАКРЫТА НА СОЗДАНИЕ РЕЗЕРВНОЙ КОПИИ",
+		"--denied-to", now.Add(defaultBlockTime * time.Minute).Format(formatDate),
+		"--permission-code", code,
+		"--scheduled-jobs-deny", "on",
+		"--sessions-deny", "on"}
+
+	if clusterCred != (entity.Credentials{}) {
+		args = append(args, []string{"--cluster-user", clusterCred.Name, "--cluster-pwd", clusterCred.Pwd}...)
+	}
+
+	if infobaseCred != (entity.Credentials{}) {
+		args = append(args, []string{"--infobase-user", infobaseCred.Name, "--infobase-pwd", infobaseCred.Pwd}...)
+	}
+
+	cmd, _, err := r.pipe.Run(ctx, args...)
+
+	if err != nil {
+		return fmt.Errorf("ctrlpipe - disablesessions - error opening pipe: %w", err)
+	}
+
 	defer cmd.Cancel()
 
-	return nil
-}
+	var wg sync.WaitGroup
 
-func (r *CtrlPipe) EnableSessions(ctx context.Context, infobase entity.Infobase) error {
-	cmd, _, err := r.Pipe.Run("session", fmt.Sprintf("--cluster=%s", infobase.ClusterID),
-		"infobase", "update", fmt.Sprintf("--infobase=%s", infobase.ID),
-		"--permission-code=12345",
-		"--scheduled-jobs-deny=off",
-		"--session-deny=off")
-	if err != nil {
-		return fmt.Errorf("ctrlpipe - EnableSessions - error opening pipe: %w", err)
+	errs := make(chan error)
+	quit := make(chan struct{})
+
+	defer close(quit)
+	defer close(errs)
+
+	if err = cmd.Start(); err != nil {
+		//break all
+		return fmt.Errorf("ctrlpipe - disablesessions - cmd.Start: %w", err)
 	}
 
-	cmd.Start()
-	defer cmd.Cancel()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 
-	return nil
+		if err := cmd.Wait(); err != nil {
+			errs <- err
+		}
+		quit <- struct{}{}
+	}()
+
+	var errg error
+
+	for {
+		select {
+		case errg = <-errs:
+			cmd.Cancel()
+		case <-quit:
+			wg.Wait()
+
+			return errg
+		}
+	}
 }
 
-func (r *CtrlPipe) DeleteSession(ctx context.Context, cluster entity.Cluster, session entity.Session) error {
-	cmd, _, err := r.Pipe.Run("session", fmt.Sprintf("--cluster=%s", cluster.ID),
-		"terminate", fmt.Sprintf("--session=%s", session.ID),
-		"--permission-code=12345",
-		"--scheduled-jobs-deny=off",
-		"--session-deny=off")
-	if err != nil {
-		return fmt.Errorf("ctrlpipe - DeleteSession - error opening pipe: %w", err)
+func (r *CtrlPipe) EnableSessions(ctx context.Context, entrypoint string, cluster entity.Cluster, infobase entity.Infobase, clusterCred entity.Credentials, infobaseCred entity.Credentials, code string) error {
+	if infobase == (entity.Infobase{}) {
+		return fmt.Errorf("ctrlpipe - enablesessions: %w", ErrInfobaseIsEmpty)
 	}
 
-	cmd.Start()
+	args := []string{entrypoint, "infobase", "update",
+		"--cluster", cluster.ID,
+		"--infobase", infobase.ID,
+		"--permission-code", code,
+		"--scheduled-jobs-deny", "off",
+		"--sessions-deny", "off"}
+
+	if clusterCred != (entity.Credentials{}) {
+		args = append(args, []string{"--cluster-user", clusterCred.Name, "--cluster-pwd", clusterCred.Pwd}...)
+	}
+
+	if infobaseCred != (entity.Credentials{}) {
+		args = append(args, []string{"--infobase-user", infobaseCred.Name, "--infobase-pwd", infobaseCred.Pwd}...)
+	}
+
+	cmd, _, err := r.pipe.Run(ctx, args...)
+
+	if err != nil {
+		return fmt.Errorf("ctrlpipe - enablesessions - error opening pipe: %w", err)
+	}
+
 	defer cmd.Cancel()
 
-	return nil
+	var wg sync.WaitGroup
+
+	errs := make(chan error)
+	quit := make(chan struct{})
+
+	defer close(quit)
+	defer close(errs)
+
+	if err = cmd.Start(); err != nil {
+		//break all
+		return fmt.Errorf("ctrlpipe - enablesessions - cmd.Start: %w", err)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		if err := cmd.Wait(); err != nil {
+			errs <- err
+		}
+		quit <- struct{}{}
+	}()
+
+	var errg error
+
+	for {
+		select {
+		case errg = <-errs:
+			cmd.Cancel()
+		case <-quit:
+			wg.Wait()
+
+			return errg
+		}
+	}
 }
 
-func (r *CtrlPipe) DeleteSessions(ctx context.Context, cluster entity.Cluster, sessions []entity.Session) error {
-	//TODO: concurent run
-	var errs error
+func (r *CtrlPipe) DeleteSession(ctx context.Context, entrypoint string, cluster entity.Cluster, session entity.Session, clusterCred entity.Credentials) error {
+	if session == (entity.Session{}) {
+		return fmt.Errorf("ctrlpipe - deletesession: %w", ErrSessionIsEmpty)
+	}
+
+	args := []string{entrypoint, "session", "terminate",
+		"--cluster", cluster.ID,
+		"--session", session.ID}
+
+	if clusterCred != (entity.Credentials{}) {
+		args = append(args, []string{"--cluster-user", clusterCred.Name, "--cluster-pwd", clusterCred.Pwd}...)
+	}
+
+	cmd, _, err := r.pipe.Run(ctx, args...)
+
+	if err != nil {
+		return fmt.Errorf("ctrlpipe - deletesession - error opening pipe: %w", err)
+	}
+
+	defer cmd.Cancel()
+
+	var wg sync.WaitGroup
+
+	errs := make(chan error)
+	quit := make(chan struct{})
+
+	defer close(quit)
+	defer close(errs)
+
+	if err = cmd.Start(); err != nil {
+		//break all
+		return fmt.Errorf("ctrlpipe - deletesession - cmd.Start: %w", err)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		if err := cmd.Wait(); err != nil {
+			errs <- err
+		}
+		quit <- struct{}{}
+	}()
+
+	var errg error
+
+	for {
+		select {
+		case errg = <-errs:
+			cmd.Cancel()
+		case <-quit:
+			wg.Wait()
+
+			return errg
+		}
+	}
+}
+
+func (r *CtrlPipe) DeleteSessions(ctx context.Context, entrypoint string, cluster entity.Cluster, sessions []entity.Session, clusterCred entity.Credentials) error {
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.SetLimit(initialBlockLimitSize)
 
 	for i := range sessions {
-		err := r.DeleteSession(ctx, cluster, sessions[i])
-		if err != nil {
-			errs = fmt.Errorf("%w - %w", errs, err)
+		i := i
+
+		g.Go(func() error {
+			return r.DeleteSession(ctx, entrypoint, cluster, sessions[i], clusterCred)
+		})
+	}
+
+	err := g.Wait()
+	return err
+}
+
+func (r *CtrlPipe) GetConnections(ctx context.Context, entrypoint string, cluster entity.Cluster, infobase entity.Infobase, clusterCred entity.Credentials) ([]entity.Connection, error) {
+	args := []string{entrypoint, "connection", "list", "--cluster", cluster.ID}
+
+	if clusterCred != (entity.Credentials{}) {
+		args = append(args, []string{"--cluster-user", clusterCred.Name, "--cluster-pwd", clusterCred.Pwd}...)
+	}
+
+	if infobase != (entity.Infobase{}) {
+		args = append(args, []string{"--infobase", infobase.ID}...)
+	}
+
+	cmd, stdout, err := r.pipe.Run(ctx, args...)
+	if err != nil {
+		return nil, fmt.Errorf("ctrlpipe - getconnections - error opening pipe: %w", err)
+	}
+
+	defer cmd.Cancel()
+	defer stdout.Close()
+
+	var wg sync.WaitGroup
+
+	datas := make(chan entity.Connection)
+	errs := make(chan error)
+	quit := make(chan struct{})
+
+	defer close(quit)
+	defer close(errs)
+	defer close(datas)
+
+	if err = cmd.Start(); err != nil {
+		//break all
+		return nil, fmt.Errorf("ctrlpipe - getconnections - cmd.Start: %w", err)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		if err := cmd.Wait(); err != nil {
+			errs <- err
+		}
+		quit <- struct{}{}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		var data, emptyData entity.Connection
+
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			line := scanner.Text()
+
+			key, value, err := r.h.GetKeyValue(line, ':')
+
+			if err != nil && errors.Is(err, ErrNotFound) {
+				continue
+			}
+
+			if err != nil && !errors.Is(err, ErrNotFound) {
+				errs <- fmt.Errorf("ctrlpipe - getconnections - error parsing line: %w", err)
+
+				return
+			}
+
+			switch key {
+			case keyConnection:
+				if data != emptyData {
+					datas <- data
+				}
+
+				data = entity.Connection{}
+				data.ID = value
+			case keyHost:
+				data.Host = value
+			case keyProcess:
+				data.ProcessID = value
+			case keyInfobase:
+				data.InfobaseID = value
+			case "application":
+				data.AppID = value
+			}
+		}
+
+		if data != emptyData {
+			datas <- data
+		}
+
+		if err := scanner.Err(); err != nil {
+			errs <- fmt.Errorf("ctrlpipe - getconnections - scanner.Err: %w", err)
+		}
+	}()
+
+	var errg error
+
+	rv := make([]entity.Connection, 0, initialSize)
+
+	num := 0
+
+	for {
+		select {
+		case data := <-datas:
+			rv = append(rv, data)
+			num++
+		case errg = <-errs:
+			cmd.Cancel()
+		case <-quit:
+			wg.Wait()
+
+			if errg != nil {
+				return nil, errg
+			}
+
+			return rv[:num:num], errg
 		}
 	}
-
-	return errs
 }
 
-func (r *CtrlPipe) GetConnections(ctx context.Context, cluster entity.Cluster, infobase entity.Infobase) ([]entity.Connection, error) {
-	return []entity.Connection{}, nil
-}
-
-func (r *CtrlPipe) DeleteConnection(ctx context.Context, cluster entity.Cluster, connection entity.Connection) error {
-	cmd, _, err := r.Pipe.Run("connection", fmt.Sprintf("--cluster=%s", cluster.ID),
-		"disconnect", fmt.Sprintf("--connection=%s", connection.ID))
-	if err != nil {
-		return fmt.Errorf("ctrlpipe - DeleteConnection - error opening pipe: %w", err)
+func (r *CtrlPipe) DeleteConnection(ctx context.Context, entrypoint string, cluster entity.Cluster, connection entity.Connection, clusterCred entity.Credentials) error {
+	if connection == (entity.Connection{}) {
+		return fmt.Errorf("ctrlpipe - deleteconnection: %w", ErrConnectionIsEmpty)
 	}
 
-	cmd.Start()
+	args := []string{entrypoint, "connection", "disconnect",
+		"--cluster", cluster.ID,
+		"--conection", connection.ID}
+
+	if clusterCred != (entity.Credentials{}) {
+		args = append(args, []string{"--cluster-user", clusterCred.Name, "--cluster-pwd", clusterCred.Pwd}...)
+	}
+
+	cmd, _, err := r.pipe.Run(ctx, args...)
+
+	if err != nil {
+		return fmt.Errorf("ctrlpipe - deleteconnection - error opening pipe: %w", err)
+	}
+
 	defer cmd.Cancel()
 
-	return nil
-}
+	var wg sync.WaitGroup
 
-func (r *CtrlPipe) DeleteConnections(ctx context.Context, cluster entity.Cluster, connections []entity.Connection) error {
-	//TODO: concurent run
-	var errs error
+	errs := make(chan error)
+	quit := make(chan struct{})
 
-	for i := range connections {
-		err := r.DeleteConnection(ctx, cluster, connections[i])
-		if err != nil {
-			errs = fmt.Errorf("%w - %w", errs, err)
+	defer close(quit)
+	defer close(errs)
+
+	if err = cmd.Start(); err != nil {
+		//break all
+		return fmt.Errorf("ctrlpipe - deleteconnection - cmd.Start: %w", err)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		if err := cmd.Wait(); err != nil {
+			errs <- err
+		}
+		quit <- struct{}{}
+	}()
+
+	var errg error
+
+	for {
+		select {
+		case errg = <-errs:
+			cmd.Cancel()
+		case <-quit:
+			wg.Wait()
+
+			return errg
 		}
 	}
-
-	return errs
 }
 
-func (r *CtrlPipe) GetKeyValue(line string, delimeter rune) (string, string, error) {
-	if pos := strings.IndexRune(line, delimeter); pos != -1 {
-		return line[:pos], line[pos+1:], nil
+func (r *CtrlPipe) DeleteConnections(ctx context.Context, entrypoint string, cluster entity.Cluster, connections []entity.Connection, clusterCred entity.Credentials) error {
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.SetLimit(initialBlockLimitSize)
+
+	for i := range connections {
+		i := i
+
+		g.Go(func() error {
+			return r.DeleteConnection(ctx, entrypoint, cluster, connections[i], clusterCred)
+		})
 	}
 
-	return "", "", notFound
+	err := g.Wait()
+	return err
 }

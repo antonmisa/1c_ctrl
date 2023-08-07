@@ -5,14 +5,17 @@ import (
 	"fmt"
 
 	"github.com/antonmisa/1cctl/internal/entity"
+	"github.com/antonmisa/1cctl/internal/usecase/common"
 )
 
-// TranslationUseCase -.
+// CtrlUseCase -.
 type CtrlUseCase struct {
 	cache  CtrlCache
 	pipe   CtrlPipe
 	backup CtrlBackup
 }
+
+var _ Ctrl = (*CtrlUseCase)(nil)
 
 // New -.
 func New(c CtrlCache, p CtrlPipe, b CtrlBackup) *CtrlUseCase {
@@ -23,89 +26,97 @@ func New(c CtrlCache, p CtrlPipe, b CtrlBackup) *CtrlUseCase {
 	}
 }
 
-// Clusters - getting clusters list.
-func (uc *CtrlUseCase) Clusters(ctx context.Context) ([]entity.Cluster, error) {
-	clusters, err := uc.cache.GetClusters(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("CtrlUseCase - Clusters - uc.cache.GetClusters: %w", err)
-	} else if clusters != nil {
-		return clusters, nil
+// Clusters - getting clusters list in cache.
+func (c *CtrlUseCase) Clusters(ctx context.Context, entrypoint string, args map[string]any) ([]entity.Cluster, error) {
+	var clusters []entity.Cluster
+
+	if v, ok := args[common.UseCache]; ok && v.(bool) {
+		clusters, err := c.cache.GetClusters(ctx, entrypoint)
+		if err != nil {
+			return nil, fmt.Errorf("CtrlUseCase - Clusters - c.cache.GetClusters: %w", err)
+		} else if clusters != nil {
+			return clusters, nil
+		}
 	}
 
-	clusters, err = uc.pipe.GetClusters(ctx)
+	clusters, err := c.pipe.GetClusters(ctx, entrypoint)
 	if err != nil {
-		return nil, fmt.Errorf("CtrlUseCase - Clusters - uc.pipe.GetClusters: %w", err)
+		return nil, fmt.Errorf("CtrlUseCase - Clusters - c.pipe.GetClusters: %w", err)
 	}
 
-	err = uc.cache.PutClusters(ctx, clusters)
+	err = c.cache.PutClusters(ctx, entrypoint, clusters)
 	if err != nil {
-		return nil, fmt.Errorf("CtrlUseCase - Clusters - uc.pipe.PutClusters: %w", err)
+		return nil, fmt.Errorf("CtrlUseCase - Clusters - c.pipe.PutClusters: %w", err)
 	}
 
 	return clusters, nil
 }
 
 // Infobases - getting infobases list for cluster.
-func (uc *CtrlUseCase) Infobases(ctx context.Context, cluster entity.Cluster) ([]entity.Infobase, error) {
-	infobases, err := uc.cache.GetInfobases(ctx, cluster)
-	if err != nil {
-		return nil, fmt.Errorf("CtrlUseCase - Infobases - uc.cache.GetInfobases: %w", err)
-	} else if infobases != nil {
-		return infobases, nil
+func (c *CtrlUseCase) Infobases(ctx context.Context, entrypoint string, cluster entity.Cluster, clusterCred entity.Credentials, args map[string]any) ([]entity.Infobase, error) {
+	var infobases []entity.Infobase
+
+	if v, ok := args[common.UseCache]; ok && v.(bool) {
+		clusters, err := c.cache.GetInfobases(ctx, entrypoint, cluster)
+		if err != nil {
+			return nil, fmt.Errorf("CtrlUseCase - Clusters - c.cache.GetInfobases: %w", err)
+		} else if clusters != nil {
+			return clusters, nil
+		}
 	}
 
-	infobases, err = uc.pipe.GetInfobases(ctx, cluster)
+	infobases, err := c.pipe.GetInfobases(ctx, entrypoint, cluster, clusterCred)
 	if err != nil {
-		return nil, fmt.Errorf("CtrlUseCase - Infobases - uc.pipe.GetInfobases: %w", err)
+		return nil, fmt.Errorf("CtrlUseCase - Infobases - c.pipe.GetInfobases: %w", err)
 	}
 
-	err = uc.cache.PutInfobases(ctx, cluster, infobases)
+	err = c.cache.PutInfobases(ctx, entrypoint, cluster, infobases)
 	if err != nil {
-		return nil, fmt.Errorf("CtrlUseCase - Infobases - uc.pipe.PutInfobases: %w", err)
+		return nil, fmt.Errorf("CtrlUseCase - Infobases - c.pipe.PutInfobases: %w", err)
 	}
 
 	return infobases, nil
 }
 
 // Sessions - getting sessions list for cluster.
-func (uc *CtrlUseCase) Sessions(ctx context.Context, cluster entity.Cluster, ib entity.Infobase) ([]entity.Session, error) {
-	sessions, err := uc.cache.GetSessions(ctx, cluster, ib)
+func (c *CtrlUseCase) Sessions(ctx context.Context, entrypoint string, cluster entity.Cluster, clusterCred entity.Credentials, infobase entity.Infobase, args map[string]any) ([]entity.Session, error) {
+	sessions, err := c.cache.GetSessions(ctx, entrypoint, cluster, infobase)
 	if err != nil {
-		return nil, fmt.Errorf("CtrlUseCase - Sessions - uc.cache.GetSessions: %w", err)
+		return nil, fmt.Errorf("CtrlUseCase - Sessions - c.cache.GetSessions: %w", err)
 	} else if sessions != nil {
 		return sessions, nil
 	}
 
-	sessions, err = uc.pipe.GetSessions(ctx, cluster, ib)
+	sessions, err = c.pipe.GetSessions(ctx, entrypoint, cluster, infobase, clusterCred)
 	if err != nil {
-		return nil, fmt.Errorf("CtrlUseCase - Sessions - uc.pipe.GetSessions: %w", err)
+		return nil, fmt.Errorf("CtrlUseCase - Sessions - c.pipe.GetSessions: %w", err)
 	}
 
-	err = uc.cache.PutSessions(ctx, cluster, ib, sessions)
+	err = c.cache.PutSessions(ctx, entrypoint, cluster, infobase, sessions)
 	if err != nil {
-		return nil, fmt.Errorf("CtrlUseCase - Sessions - uc.pipe.PutSessions: %w", err)
+		return nil, fmt.Errorf("CtrlUseCase - Sessions - c.pipe.PutSessions: %w", err)
 	}
 
 	return sessions, nil
 }
 
 // Connections - getting connections list for cluster.
-func (uc *CtrlUseCase) Connections(ctx context.Context, cluster entity.Cluster, ib entity.Infobase) ([]entity.Connection, error) {
-	connections, err := uc.cache.GetConnections(ctx, cluster, ib)
+func (c *CtrlUseCase) Connections(ctx context.Context, entrypoint string, cluster entity.Cluster, clusterCred entity.Credentials, infobase entity.Infobase, args map[string]any) ([]entity.Connection, error) {
+	connections, err := c.cache.GetConnections(ctx, entrypoint, cluster, infobase)
 	if err != nil {
-		return nil, fmt.Errorf("CtrlUseCase - Connections - uc.cache.GetConnections: %w", err)
+		return nil, fmt.Errorf("CtrlUseCase - Connections - c.cache.GetConnections: %w", err)
 	} else if connections != nil {
 		return connections, nil
 	}
 
-	connections, err = uc.pipe.GetConnections(ctx, cluster, ib)
+	connections, err = c.pipe.GetConnections(ctx, entrypoint, cluster, infobase, clusterCred)
 	if err != nil {
 		return nil, fmt.Errorf("CtrlUseCase - Connections - uc.pipe.GetConnections: %w", err)
 	}
 
-	err = uc.cache.PutConnections(ctx, cluster, ib, connections)
+	err = c.cache.PutConnections(ctx, entrypoint, cluster, infobase, connections)
 	if err != nil {
-		return nil, fmt.Errorf("CtrlUseCase - Connections - uc.pipe.PutConnections: %w", err)
+		return nil, fmt.Errorf("CtrlUseCase - Connections - c.pipe.PutConnections: %w", err)
 	}
 
 	return connections, nil

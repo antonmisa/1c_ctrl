@@ -11,6 +11,7 @@ import (
 
 	// Swagger docs.
 	_ "github.com/antonmisa/1cctl/docs"
+	"github.com/antonmisa/1cctl/internal/controller/http/v1/middleware/commonqueryparams"
 	"github.com/antonmisa/1cctl/internal/usecase"
 	"github.com/antonmisa/1cctl/pkg/logger"
 )
@@ -26,6 +27,7 @@ func NewRouter(handler *gin.Engine, l logger.Interface, t usecase.Ctrl) {
 	// Options
 	handler.Use(gin.Logger())
 	handler.Use(gin.Recovery())
+	handler.Use(commonqueryparams.UseCommonQueryParams(l))
 
 	// Swagger
 	swaggerHandler := ginSwagger.DisablingWrapHandler(swaggerFiles.Handler, "DISABLE_SWAGGER_HTTP_HANDLER")
@@ -40,6 +42,6 @@ func NewRouter(handler *gin.Engine, l logger.Interface, t usecase.Ctrl) {
 	// Routers
 	h := handler.Group("/v1")
 	{
-		newCtrl1CRoutes(h, t, l)
+		newCtrlRoutes(h, t, l)
 	}
 }

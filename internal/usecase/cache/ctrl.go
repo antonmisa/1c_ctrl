@@ -2,104 +2,121 @@ package cache
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/antonmisa/1cctl/internal/entity"
+	uc "github.com/antonmisa/1cctl/internal/usecase"
 	"github.com/antonmisa/1cctl/pkg/cache"
 )
 
 const (
-	_keyClusters  string = "clusters"
-	_keyInfobases string = "%s:ibs"
-	_keySessions  string = "%s:%s:ses"
+	_keyClusters    string = "%s:clusters"
+	_keyInfobases   string = "%s:clusters:%s:ibs"
+	_keySessions    string = "%s:clusters:%s:ibs:%s:ses"
+	_keyConnections string = "%s:clusters:%s:ibs:%s:conns"
+)
+
+var (
+	ErrNotFound = errors.New("key not found")
 )
 
 // CtrlCache -.
 type CtrlCache struct {
-	*cache.Cache
+	cache cache.Cacher
 }
 
+var _ uc.CtrlCache = (*CtrlCache)(nil)
+
 // New -.
-func New(c *cache.Cache) *CtrlCache {
-	return &CtrlCache{c}
+func New(c cache.Cacher) *CtrlCache {
+	return &CtrlCache{cache: c}
 }
 
 // GetClusters -.
-func (cc *CtrlCache) GetClusters(ctx context.Context) ([]entity.Cluster, error) {
-	var entities []entity.Cluster
-	if err := cc.Cache.Get(ctx, _keyClusters, &entities); err != nil {
-		return nil, fmt.Errorf("CtrlCache - GetClusters - cc.Cache.Get: : %w", err)
+func (cc *CtrlCache) GetClusters(ctx context.Context, entrypoint string) ([]entity.Cluster, error) {
+	key := fmt.Sprintf(_keyClusters, entrypoint)
+
+	v, ok := cc.cache.Get(key)
+
+	if !ok {
+		return []entity.Cluster{}, ErrNotFound
 	}
 
-	return entities, nil
+	return v.([]entity.Cluster), nil
 }
 
 // PutClusters -.
-func (cc *CtrlCache) PutClusters(ctx context.Context, entities []entity.Cluster) error {
-	if len(entities) == 0 {
-		return nil
-	}
+func (cc *CtrlCache) PutClusters(ctx context.Context, entrypoint string, entities []entity.Cluster) error {
+	key := fmt.Sprintf(_keyClusters, entrypoint)
 
-	return cc.Store(ctx, _keyClusters, entities)
+	cc.cache.Set(key, entities)
+
+	return nil
 }
 
 // GetInfobases -.
-func (cc *CtrlCache) GetInfobases(ctx context.Context, cluster entity.Cluster) ([]entity.Infobase, error) {
-	var entities []entity.Infobase
+func (cc *CtrlCache) GetInfobases(ctx context.Context, entrypoint string, cluster entity.Cluster) ([]entity.Infobase, error) {
+	key := fmt.Sprintf(_keyInfobases, entrypoint, cluster.ID)
 
-	key := fmt.Sprintf(_keyInfobases, cluster.ID)
+	v, ok := cc.cache.Get(key)
 
-	if err := cc.Cache.Get(ctx, key, &entities); err != nil {
-		return nil, fmt.Errorf("CtrlCache - GetInfobases - cc.Cache.Get: : %w", err)
+	if !ok {
+		return []entity.Infobase{}, ErrNotFound
 	}
 
-	return entities, nil
+	return v.([]entity.Infobase), nil
 }
 
 // PutInfobases -.
-func (cc *CtrlCache) PutInfobases(ctx context.Context, cluster entity.Cluster, entities []entity.Infobase) error {
-	if len(entities) == 0 {
-		return nil
-	}
+func (cc *CtrlCache) PutInfobases(ctx context.Context, entrypoint string, cluster entity.Cluster, entities []entity.Infobase) error {
+	key := fmt.Sprintf(_keyInfobases, entrypoint, cluster.ID)
 
-	key := fmt.Sprintf(_keyInfobases, cluster.ID)
+	cc.cache.Set(key, entities)
 
-	return cc.Store(ctx, key, entities)
+	return nil
 }
 
 // GetSessions -.
-func (cc *CtrlCache) GetSessions(ctx context.Context, cluster entity.Cluster, ib entity.Infobase) ([]entity.Session, error) {
-	var entities []entity.Session
+func (cc *CtrlCache) GetSessions(ctx context.Context, entrypoint string, cluster entity.Cluster, ib entity.Infobase) ([]entity.Session, error) {
+	key := fmt.Sprintf(_keySessions, entrypoint, cluster.ID, ib.ID)
 
-	key := fmt.Sprintf(_keySessions, cluster.ID, ib.ID)
+	v, ok := cc.cache.Get(key)
 
-	if err := cc.Cache.Get(ctx, key, &entities); err != nil {
-		return nil, fmt.Errorf("CtrlCache - GetSessions - cc.Cache.Get: : %w", err)
+	if !ok {
+		return []entity.Session{}, ErrNotFound
 	}
 
-	return entities, nil
+	return v.([]entity.Session), nil
 }
 
 // PutSessions -.
-func (cc *CtrlCache) PutSessions(ctx context.Context, cluster entity.Cluster, ib entity.Infobase, entities []entity.Infobase) error {
-	if len(entities) == 0 {
-		return nil
-	}
+func (cc *CtrlCache) PutSessions(ctx context.Context, entrypoint string, cluster entity.Cluster, ib entity.Infobase, entities []entity.Session) error {
+	key := fmt.Sprintf(_keySessions, entrypoint, cluster.ID, ib.ID)
 
-	key := fmt.Sprintf(_keySessions, cluster.ID, ib.ID)
+	cc.cache.Set(key, entities)
 
-	return cc.Store(ctx, key, entities)
+	return nil
 }
 
-// Store -.
-func (r *CtrlCache) Store(ctx context.Context, k string, v interface{}) error {
-	if err := cc.Cache.Set(&c.Item{
-		Ctx:   ctx,
-		Key:   k,
-		Value: v,
-	}); err != nil {
-		return fmt.Errorf("CtrlCache - Store - cc.Cache.Set: : %w", err)
+// GetConnections -.
+func (cc *CtrlCache) GetConnections(ctx context.Context, entrypoint string, cluster entity.Cluster, ib entity.Infobase) ([]entity.Connection, error) {
+	key := fmt.Sprintf(_keyConnections, entrypoint, cluster.ID, ib.ID)
+
+	v, ok := cc.cache.Get(key)
+
+	if !ok {
+		return []entity.Connection{}, ErrNotFound
 	}
+
+	return v.([]entity.Connection), nil
+}
+
+// PutConnection -.
+func (cc *CtrlCache) PutConnections(ctx context.Context, entrypoint string, cluster entity.Cluster, ib entity.Infobase, entities []entity.Connection) error {
+	key := fmt.Sprintf(_keyConnections, entrypoint, cluster.ID, ib.ID)
+
+	cc.cache.Set(key, entities)
 
 	return nil
 }

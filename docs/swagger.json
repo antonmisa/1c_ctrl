@@ -1,0 +1,344 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Using a 1C cluster control service over http",
+        "title": "1C cluster control service",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/v1",
+    "paths": {
+        "/cluster/:cluster/connection/list": {
+            "get": {
+                "description": "Show all connections with identifiers for current cluster",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "connection list"
+                ],
+                "summary": "Show all connections in cluster",
+                "operationId": "connections",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.connectionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.response"
+                        }
+                    }
+                }
+            }
+        },
+        "/cluster/:cluster/infobase/:infobase/connection/list": {
+            "get": {
+                "description": "Show all connections with identifiers for current infobase in cluster",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "connection list infobase"
+                ],
+                "summary": "Show all connections in infobase",
+                "operationId": "connectionsByInfobase",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.connectionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.response"
+                        }
+                    }
+                }
+            }
+        },
+        "/cluster/:cluster/infobase/:infobase/session/list": {
+            "get": {
+                "description": "Show all sessions with identifiers for current infobase in cluster",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "session list infobase"
+                ],
+                "summary": "Show all sessions in infobase",
+                "operationId": "sessionsByInfobase",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.sessionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.response"
+                        }
+                    }
+                }
+            }
+        },
+        "/cluster/:cluster/infobase/list": {
+            "get": {
+                "description": "Show all infobases with identifiers for current cluster",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "infobase list"
+                ],
+                "summary": "Show all infobases in cluster",
+                "operationId": "infobases",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.infobaseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.response"
+                        }
+                    }
+                }
+            }
+        },
+        "/cluster/:cluster/session/list": {
+            "get": {
+                "description": "Show all sessions with identifiers for current cluster",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "session list"
+                ],
+                "summary": "Show all sessions in cluster",
+                "operationId": "sessions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.sessionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/v1.response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.response"
+                        }
+                    }
+                }
+            }
+        },
+        "/cluster/list": {
+            "get": {
+                "description": "Show all clusters with identifiers",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cluster list"
+                ],
+                "summary": "Show clusters",
+                "operationId": "clusters",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.clusterResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/v1.response"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "entity.Cluster": {
+            "type": "object",
+            "properties": {
+                "host": {
+                    "type": "string",
+                    "example": "localhost"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "UUID like"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "name as text"
+                },
+                "port": {
+                    "type": "string",
+                    "example": "1541"
+                }
+            }
+        },
+        "entity.Connection": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "UUID like"
+                }
+            }
+        },
+        "entity.Infobase": {
+            "type": "object",
+            "properties": {
+                "cluster": {
+                    "type": "string",
+                    "example": "UUID like"
+                },
+                "desc": {
+                    "type": "string",
+                    "example": "some comments"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "UUID like"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "name as text"
+                }
+            }
+        },
+        "entity.Session": {
+            "type": "object",
+            "properties": {
+                "appid": {
+                    "type": "string",
+                    "example": "Application identifier"
+                },
+                "host": {
+                    "type": "string",
+                    "example": "Host of the user"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "UUID like"
+                },
+                "idbase": {
+                    "type": "string",
+                    "example": "UUID of infobase"
+                },
+                "idbconn": {
+                    "type": "string",
+                    "example": "UUID of connection"
+                },
+                "idproc": {
+                    "type": "string",
+                    "example": "UUID of process"
+                },
+                "uname": {
+                    "type": "string",
+                    "example": "Name of the user"
+                }
+            }
+        },
+        "v1.clusterResponse": {
+            "type": "object",
+            "properties": {
+                "clusters": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.Cluster"
+                    }
+                }
+            }
+        },
+        "v1.connectionResponse": {
+            "type": "object",
+            "properties": {
+                "connections": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.Connection"
+                    }
+                }
+            }
+        },
+        "v1.infobaseResponse": {
+            "type": "object",
+            "properties": {
+                "infobases": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.Infobase"
+                    }
+                }
+            }
+        },
+        "v1.response": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "message"
+                }
+            }
+        },
+        "v1.sessionResponse": {
+            "type": "object",
+            "properties": {
+                "sessions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.Session"
+                    }
+                }
+            }
+        }
+    }
+}

@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
 	"gopkg.in/yaml.v2"
@@ -10,9 +11,10 @@ import (
 
 // Config -.
 type Config struct {
-	App  `yaml:"app"`
-	HTTP `yaml:"http"`
-	Log  `yaml:"logger"`
+	App   `yaml:"app"`
+	Cache `yaml:"cache"`
+	HTTP  `yaml:"http"`
+	Log   `yaml:"logger"`
 }
 
 // App -.
@@ -23,9 +25,14 @@ type App struct {
 	LockCode string `env-required:"true" yaml:"lock_code"`
 }
 
+// Cache -.
+type Cache struct {
+	TTL time.Duration `env-required:"true" yaml:"ttl"`
+}
+
 // HTTP -.
 type HTTP struct {
-	Port int `env-required:"true" yaml:"port" env:"HTTP_PORT"`
+	Port string `env-required:"true" yaml:"port" env:"HTTP_PORT"`
 }
 
 // Log -.
@@ -71,8 +78,11 @@ func Prepare() error {
 			PathTo1C:  "path to 1c executable client",
 			LockCode:  "12345",
 		},
+		Cache{
+			TTL: 60,
+		},
 		HTTP{
-			Port: 8080,
+			Port: "8080",
 		},
 		Log{
 			Level: "debug",

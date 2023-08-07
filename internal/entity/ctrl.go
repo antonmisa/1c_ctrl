@@ -12,10 +12,9 @@ type Cluster struct {
 
 // Infobase -.
 type Infobase struct {
-	ID        string `json:"id"       example:"UUID like"`
-	ClusterID string `json:"cluster"       example:"UUID like"`
-	Name      string `json:"name"  example:"name as text"`
-	Desc      string `json:"desc"  example:"some comments"`
+	ID   string `json:"id"       example:"UUID like"`
+	Name string `json:"name"  example:"name as text"`
+	Desc string `json:"desc"  example:"some comments"`
 }
 
 // Session -.
@@ -31,5 +30,9 @@ type Session struct {
 
 // Connection -.
 type Connection struct {
-	ID string `json:"id"       example:"UUID like"`
+	ID         string `json:"id"       example:"UUID like"`
+	InfobaseID string `json:"idbase"  example:"UUID of infobase"`
+	ProcessID  string `json:"idproc"  example:"UUID of process"`
+	Host       string `json:"host"  example:"Host of the user"`
+	AppID      string `json:"appid"  example:"Application identifier"`
 }

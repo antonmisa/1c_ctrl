@@ -5,9 +5,8 @@ app:
 http:
   port: '8080'
 
+cache:
+  ttl: 60
+
 logger:
   level: 'debug'  
-
-redis:
-  addr: ''
-  ttl: 10

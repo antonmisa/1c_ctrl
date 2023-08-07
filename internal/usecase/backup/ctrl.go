@@ -31,14 +31,18 @@ func New(path string) (*CtrlBackup, error) {
 // RunBackup -.
 func (r *CtrlBackup) RunBackup(ctx context.Context,
 	cl entity.Cluster, ib entity.Infobase,
-	ibAdminName string, ibAdminPwd string,
+	ibCred entity.Credentials,
+	lockCode string,
 	outputPath string) error {
+
 	cmd := exec.CommandContext(ctx, r.pathTo1C, "CONFIG", "/S", fmt.Sprintf("%s:%s\\%s", cl.Host, cl.Port, ib.Name),
-		"/N", ibAdminName, "/P", ibAdminPwd, "/UC", "12345", "/DisableStartupMessages",
-		"/DumpIB", outputPath)
+		"/N", ibCred.Name, "/P", ibCred.Pwd,
+		"/UC", lockCode, "/DisableStartupMessages",
+		"/DumpIB", outputPath) //nolint:gosec // it is normal
+
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf(": %w", err)
+		return fmt.Errorf("ctrlbackup - runbackup - cmd.Run: %w", err)
 	}
 	defer cmd.Cancel()
 
