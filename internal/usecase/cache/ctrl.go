@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/antonmisa/1cctl/internal/entity"
-	uc "github.com/antonmisa/1cctl/internal/usecase"
+	//	uc "github.com/antonmisa/1cctl/internal/usecase"
 	"github.com/antonmisa/1cctl/pkg/cache"
 )
 
@@ -26,7 +26,7 @@ type CtrlCache struct {
 	cache cache.Cacher
 }
 
-var _ uc.CtrlCache = (*CtrlCache)(nil)
+//var _ uc.CtrlCache = (*CtrlCache)(nil)
 
 // New -.
 func New(c cache.Cacher) *CtrlCache {

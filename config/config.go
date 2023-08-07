@@ -20,7 +20,7 @@ type Config struct {
 // App -.
 type App struct {
 	PathToRAC string `env-required:"true" yaml:"path_to_rac" env:"PATH_TO_RAC"`
-	PathTo1C  string `env-required:"true" yaml:"path_to_1cs" env:"PATH_TO_1C"`
+	PathTo1C  string `env-required:"true" yaml:"path_to_1c" env:"PATH_TO_1C"`
 
 	LockCode string `env-required:"true" yaml:"lock_code"`
 }

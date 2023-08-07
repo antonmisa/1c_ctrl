@@ -25,17 +25,13 @@ func newCtrlRoutes(handler *gin.RouterGroup, t usecase.Ctrl, l logger.Interface)
 	{
 		h.Use(clustercredentials.UseClusterCredentials(l))
 
-		h.GET("/:cluster/list", r.clusters)
+		h.GET("/list", r.clusters)
 		h.GET("/:cluster/infobase/list", r.infobases)
 		h.GET("/:cluster/infobase/:infobase/session/list", r.sessionsByInfobase)
 		h.GET("/:cluster/infobase/:infobase/connection/list", r.connectionsByInfobase)
 		h.GET("/:cluster/session/list", r.sessions)
 		h.GET("/:cluster/connection/list", r.connections)
 	}
-}
-
-type clusterRequest struct {
-	Entrypoint string `uri:"entrypoint" binding:"required"`
 }
 
 type clusterResponse struct {
@@ -48,19 +44,11 @@ type clusterResponse struct {
 // @Tags  	    cluster list
 // @Produce     json
 // @Param		cache	query		bool			false	"Cache"
+// @Param       entrypoint query    string          "" 		"Entrypoint"
 // @Success     200 {object} clusterResponse
 // @Failure     500 {object} response
-// @Router      /cluster/:cluster/list [get]
+// @Router      /cluster/list [get]
 func (r *ctrlRoutes) clusters(c *gin.Context) {
-	clusterRequest := clusterRequest{}
-
-	if err := c.ShouldBindUri(&clusterRequest); err != nil {
-		r.l.Error(err, "http - v1 - clusters - c.ShouldBindUri")
-		v1e.ErrorResponse(c, http.StatusBadRequest, "bad request")
-
-		return
-	}
-
 	entrypoint := c.GetString(common.Entrypoint)
 
 	args := map[string]any{
