@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/antonmisa/1cctl/internal/entity"
 	//	uc "github.com/antonmisa/1cctl/internal/usecase"
@@ -15,6 +16,9 @@ const (
 	_keyInfobases   string = "%s:clusters:%s:ibs"
 	_keySessions    string = "%s:clusters:%s:ibs:%s:ses"
 	_keyConnections string = "%s:clusters:%s:ibs:%s:conns"
+
+	_defaultSessionTTL    time.Duration = 5 * time.Second
+	_defaultConnectionTTL time.Duration = 5 * time.Second
 )
 
 var (
@@ -50,7 +54,7 @@ func (cc *CtrlCache) GetClusters(ctx context.Context, entrypoint string) ([]enti
 func (cc *CtrlCache) PutClusters(ctx context.Context, entrypoint string, entities []entity.Cluster) error {
 	key := fmt.Sprintf(_keyClusters, entrypoint)
 
-	cc.cache.Set(key, entities)
+	cc.cache.Set(key, entities, 0)
 
 	return nil
 }
@@ -72,7 +76,7 @@ func (cc *CtrlCache) GetInfobases(ctx context.Context, entrypoint string, cluste
 func (cc *CtrlCache) PutInfobases(ctx context.Context, entrypoint string, cluster entity.Cluster, entities []entity.Infobase) error {
 	key := fmt.Sprintf(_keyInfobases, entrypoint, cluster.ID)
 
-	cc.cache.Set(key, entities)
+	cc.cache.Set(key, entities, 0)
 
 	return nil
 }
@@ -94,7 +98,7 @@ func (cc *CtrlCache) GetSessions(ctx context.Context, entrypoint string, cluster
 func (cc *CtrlCache) PutSessions(ctx context.Context, entrypoint string, cluster entity.Cluster, ib entity.Infobase, entities []entity.Session) error {
 	key := fmt.Sprintf(_keySessions, entrypoint, cluster.ID, ib.ID)
 
-	cc.cache.Set(key, entities)
+	cc.cache.Set(key, entities, _defaultSessionTTL)
 
 	return nil
 }
@@ -116,7 +120,7 @@ func (cc *CtrlCache) GetConnections(ctx context.Context, entrypoint string, clus
 func (cc *CtrlCache) PutConnections(ctx context.Context, entrypoint string, cluster entity.Cluster, ib entity.Infobase, entities []entity.Connection) error {
 	key := fmt.Sprintf(_keyConnections, entrypoint, cluster.ID, ib.ID)
 
-	cc.cache.Set(key, entities)
+	cc.cache.Set(key, entities, _defaultConnectionTTL)
 
 	return nil
 }

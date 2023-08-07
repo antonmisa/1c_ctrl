@@ -11,7 +11,7 @@ const (
 )
 
 type Cacher interface {
-	Set(key string, value any)
+	Set(key string, value any, ttl time.Duration)
 	Get(key string) (any, bool)
 	Delete(key string) bool
 	DeleteExpired()
@@ -54,16 +54,20 @@ func newCache(ttl time.Duration) *cache {
 }
 
 // Set key to cache -.
-func (c *cache) Set(key string, value any) {
+func (c *cache) Set(key string, value any, ttl time.Duration) {
 	c.Lock()
 	defer c.Unlock()
 
-	c.set(key, value)
+	if ttl == 0 {
+		ttl = c.ttl
+	}
+
+	c.set(key, value, ttl)
 }
 
 // Internal set with logic -.
-func (c *cache) set(key string, value any) {
-	t := time.Now().Add(c.ttl)
+func (c *cache) set(key string, value any, ttl time.Duration) {
+	t := time.Now().Add(ttl)
 
 	c.items[key] = &item{
 		Object:     value,

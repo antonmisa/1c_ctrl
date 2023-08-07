@@ -20,9 +20,9 @@ func Test_Cache_Delete(t *testing.T) {
 			name: "OK",
 			cf: func() *Cache {
 				c, _ := New(60 * time.Second)
-				c.Set("1", 1)
-				c.Set("2", 1)
-				c.Set("3", 1)
+				c.Set("1", 1, 60*time.Second)
+				c.Set("2", 1, 60*time.Second)
+				c.Set("3", 1, 60*time.Second)
 
 				return c
 			},
@@ -33,8 +33,8 @@ func Test_Cache_Delete(t *testing.T) {
 			name: "Error not found",
 			cf: func() *Cache {
 				c, _ := New(60 * time.Second)
-				c.Set("2", 1)
-				c.Set("3", 1)
+				c.Set("2", 1, 60*time.Second)
+				c.Set("3", 1, 60*time.Second)
 
 				return c
 			},
@@ -68,9 +68,9 @@ func Test_Cache_DeleteExpired(t *testing.T) {
 			name: "OK, long ttl",
 			cf: func() *Cache {
 				c, _ := New(60 * time.Second)
-				c.Set("1", 1)
-				c.Set("2", 1)
-				c.Set("3", 1)
+				c.Set("1", 1, 60*time.Second)
+				c.Set("2", 1, 60*time.Second)
+				c.Set("3", 1, 60*time.Second)
 
 				return c
 			},
@@ -80,15 +80,29 @@ func Test_Cache_DeleteExpired(t *testing.T) {
 			name: "Ok, short ttl",
 			cf: func() *Cache {
 				c, _ := New(1 * time.Nanosecond)
-				c.Set("1", 1)
-				c.Set("2", 1)
-				c.Set("3", 1)
+				c.Set("1", 1, time.Nanosecond)
+				c.Set("2", 1, time.Nanosecond)
+				c.Set("3", 1, time.Nanosecond)
 
 				time.Sleep(2 * time.Nanosecond)
 
 				return c
 			},
 			want: 0,
+		},
+		{
+			name: "Ok, partly short ttl",
+			cf: func() *Cache {
+				c, _ := New(1 * time.Nanosecond)
+				c.Set("1", 1, time.Nanosecond)
+				c.Set("2", 1, time.Nanosecond)
+				c.Set("3", 1, 60*time.Second)
+
+				time.Sleep(2 * time.Nanosecond)
+
+				return c
+			},
+			want: 1,
 		},
 	}
 	for _, tt := range tests {
@@ -117,9 +131,9 @@ func Test_Cache_Flush(t *testing.T) {
 			name: "OK, long ttl",
 			cf: func() *Cache {
 				c, _ := New(60 * time.Second)
-				c.Set("1", 1)
-				c.Set("2", 1)
-				c.Set("3", 1)
+				c.Set("1", 1, 60*time.Second)
+				c.Set("2", 1, 60*time.Second)
+				c.Set("3", 1, 60*time.Second)
 
 				return c
 			},
@@ -129,9 +143,9 @@ func Test_Cache_Flush(t *testing.T) {
 			name: "Ok, short ttl",
 			cf: func() *Cache {
 				c, _ := New(1 * time.Nanosecond)
-				c.Set("1", 1)
-				c.Set("2", 1)
-				c.Set("3", 1)
+				c.Set("1", 1, time.Nanosecond)
+				c.Set("2", 1, time.Nanosecond)
+				c.Set("3", 1, time.Nanosecond)
 
 				return c
 			},
@@ -166,9 +180,9 @@ func Test_Cache_Get(t *testing.T) {
 			name: "OK, long ttl",
 			cf: func() *Cache {
 				c, _ := New(60 * time.Second)
-				c.Set("1", 1)
-				c.Set("2", 1)
-				c.Set("3", 1)
+				c.Set("1", 1, 60*time.Second)
+				c.Set("2", 1, 60*time.Second)
+				c.Set("3", 1, 60*time.Second)
 
 				return c
 			},
@@ -180,10 +194,10 @@ func Test_Cache_Get(t *testing.T) {
 			name: "OK, modified",
 			cf: func() *Cache {
 				c, _ := New(60 * time.Second)
-				c.Set("1", 1)
-				c.Set("2", 1)
-				c.Set("3", 1)
-				c.Set("1", 2)
+				c.Set("1", 1, 60*time.Second)
+				c.Set("2", 1, 60*time.Second)
+				c.Set("3", 1, 60*time.Second)
+				c.Set("1", 2, 60*time.Second)
 
 				return c
 			},
@@ -195,9 +209,9 @@ func Test_Cache_Get(t *testing.T) {
 			name: "Not, short ttl expired",
 			cf: func() *Cache {
 				c, _ := New(1 * time.Nanosecond)
-				c.Set("1", 1)
-				c.Set("2", 1)
-				c.Set("3", 1)
+				c.Set("1", 1, time.Nanosecond)
+				c.Set("2", 1, time.Nanosecond)
+				c.Set("3", 1, time.Nanosecond)
 
 				time.Sleep(2 * time.Nanosecond)
 
@@ -230,6 +244,7 @@ func Test_Cache_Set(t *testing.T) {
 		name string
 		cf   F
 		key  string
+		ttl  time.Duration
 		want any
 	}{
 		{
@@ -240,6 +255,7 @@ func Test_Cache_Set(t *testing.T) {
 				return c
 			},
 			key:  "1",
+			ttl:  60 * time.Second,
 			want: 1,
 		},
 	}
@@ -250,7 +266,7 @@ func Test_Cache_Set(t *testing.T) {
 			t.Parallel()
 
 			c := tt.cf()
-			c.Set(tt.key, tt.want)
+			c.Set(tt.key, tt.want, tt.ttl)
 			v, found := c.Get(tt.key)
 
 			require.Equal(t, found, true)
