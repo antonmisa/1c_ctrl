@@ -35,6 +35,7 @@ func (c *CtrlUseCase) Clusters(ctx context.Context, entrypoint string, args map[
 
 	if v, ok := args[common.UseCache]; ok && v.(bool) {
 		clusters, err := c.cache.GetClusters(ctx, entrypoint)
+
 		if err != nil && !errors.Is(err, cache.ErrNotFound) {
 			return nil, fmt.Errorf("CtrlUseCase - Clusters - c.cache.GetClusters: %w", err)
 		} else if !reflect.DeepEqual(clusters, []entity.Cluster{}) {
@@ -61,6 +62,7 @@ func (c *CtrlUseCase) Infobases(ctx context.Context, entrypoint string, cluster 
 
 	if v, ok := args[common.UseCache]; ok && v.(bool) {
 		infobases, err := c.cache.GetInfobases(ctx, entrypoint, cluster)
+
 		if err != nil && !errors.Is(err, cache.ErrNotFound) {
 			return nil, fmt.Errorf("CtrlUseCase - Infobases - c.cache.GetInfobases: %w", err)
 		} else if !reflect.DeepEqual(infobases, []entity.Infobase{}) {
@@ -83,14 +85,19 @@ func (c *CtrlUseCase) Infobases(ctx context.Context, entrypoint string, cluster 
 
 // Sessions - getting sessions list for cluster.
 func (c *CtrlUseCase) Sessions(ctx context.Context, entrypoint string, cluster entity.Cluster, clusterCred entity.Credentials, infobase entity.Infobase, args map[string]any) ([]entity.Session, error) {
-	sessions, err := c.cache.GetSessions(ctx, entrypoint, cluster, infobase)
-	if err != nil && !errors.Is(err, cache.ErrNotFound) {
-		return nil, fmt.Errorf("CtrlUseCase - Sessions - c.cache.GetSessions: %w", err)
-	} else if !reflect.DeepEqual(sessions, []entity.Session{}) {
-		return sessions, nil
+	var sessions []entity.Session
+
+	if v, ok := args[common.UseCache]; ok && v.(bool) {
+		sessions, err := c.cache.GetSessions(ctx, entrypoint, cluster, infobase)
+
+		if err != nil && !errors.Is(err, cache.ErrNotFound) {
+			return nil, fmt.Errorf("CtrlUseCase - Sessions - c.cache.GetSessions: %w", err)
+		} else if !reflect.DeepEqual(sessions, []entity.Session{}) {
+			return sessions, nil
+		}
 	}
 
-	sessions, err = c.pipe.GetSessions(ctx, entrypoint, cluster, infobase, clusterCred)
+	sessions, err := c.pipe.GetSessions(ctx, entrypoint, cluster, infobase, clusterCred)
 	if err != nil {
 		return nil, fmt.Errorf("CtrlUseCase - Sessions - c.pipe.GetSessions: %w", err)
 	}
@@ -105,14 +112,19 @@ func (c *CtrlUseCase) Sessions(ctx context.Context, entrypoint string, cluster e
 
 // Connections - getting connections list for cluster.
 func (c *CtrlUseCase) Connections(ctx context.Context, entrypoint string, cluster entity.Cluster, clusterCred entity.Credentials, infobase entity.Infobase, args map[string]any) ([]entity.Connection, error) {
-	connections, err := c.cache.GetConnections(ctx, entrypoint, cluster, infobase)
-	if err != nil && !errors.Is(err, cache.ErrNotFound) {
-		return nil, fmt.Errorf("CtrlUseCase - Connections - c.cache.GetConnections: %w", err)
-	} else if !reflect.DeepEqual(connections, []entity.Connection{}) {
-		return connections, nil
+	var connections []entity.Connection
+
+	if v, ok := args[common.UseCache]; ok && v.(bool) {
+		connections, err := c.cache.GetConnections(ctx, entrypoint, cluster, infobase)
+
+		if err != nil && !errors.Is(err, cache.ErrNotFound) {
+			return nil, fmt.Errorf("CtrlUseCase - Connections - c.cache.GetConnections: %w", err)
+		} else if !reflect.DeepEqual(connections, []entity.Connection{}) {
+			return connections, nil
+		}
 	}
 
-	connections, err = c.pipe.GetConnections(ctx, entrypoint, cluster, infobase, clusterCred)
+	connections, err := c.pipe.GetConnections(ctx, entrypoint, cluster, infobase, clusterCred)
 	if err != nil {
 		return nil, fmt.Errorf("CtrlUseCase - Connections - uc.pipe.GetConnections: %w", err)
 	}

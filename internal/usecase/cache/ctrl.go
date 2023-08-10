@@ -30,8 +30,6 @@ type CtrlCache struct {
 	cache cache.Cacher
 }
 
-//var _ uc.CtrlCache = (*CtrlCache)(nil)
-
 // New -.
 func New(c cache.Cacher) *CtrlCache {
 	return &CtrlCache{cache: c}

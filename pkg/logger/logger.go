@@ -8,6 +8,8 @@ import (
 	"github.com/rs/zerolog"
 )
 
+//go:generate go run github.com/vektra/mockery/v2@v2.32.0 --all
+
 // Interface -.
 type Interface interface {
 	Debug(message interface{}, args ...interface{})

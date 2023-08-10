@@ -27,6 +27,28 @@ const docTemplate = `{
                 ],
                 "summary": "Show all connections in cluster",
                 "operationId": "connections",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "UUID of cluster",
+                        "name": "cluster",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Firstly try to find from Cache",
+                        "name": "cache",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Entrypoint for cluster",
+                        "name": "entrypoint",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -37,13 +59,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/v1.response"
+                            "$ref": "#/definitions/error.response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/error.response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/v1.response"
+                            "$ref": "#/definitions/error.response"
                         }
                     }
                 }
@@ -60,6 +88,35 @@ const docTemplate = `{
                 ],
                 "summary": "Show all connections in infobase",
                 "operationId": "connectionsByInfobase",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "UUID of cluster",
+                        "name": "cluster",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "UUID of infobase",
+                        "name": "infobase",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Firstly try to find from Cache",
+                        "name": "cache",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Entrypoint for cluster",
+                        "name": "entrypoint",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -70,13 +127,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/v1.response"
+                            "$ref": "#/definitions/error.response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/error.response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/v1.response"
+                            "$ref": "#/definitions/error.response"
                         }
                     }
                 }
@@ -93,6 +156,35 @@ const docTemplate = `{
                 ],
                 "summary": "Show all sessions in infobase",
                 "operationId": "sessionsByInfobase",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "UUID of cluster",
+                        "name": "cluster",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "UUID of infobase",
+                        "name": "infobase",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Firstly try to find from Cache",
+                        "name": "cache",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Entrypoint for cluster",
+                        "name": "entrypoint",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -103,13 +195,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/v1.response"
+                            "$ref": "#/definitions/error.response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/error.response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/v1.response"
+                            "$ref": "#/definitions/error.response"
                         }
                     }
                 }
@@ -126,6 +224,28 @@ const docTemplate = `{
                 ],
                 "summary": "Show all infobases in cluster",
                 "operationId": "infobases",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "UUID of cluster",
+                        "name": "cluster",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Firstly try to find from Cache",
+                        "name": "cache",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Entrypoint for cluster",
+                        "name": "entrypoint",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -136,13 +256,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/v1.response"
+                            "$ref": "#/definitions/error.response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/error.response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/v1.response"
+                            "$ref": "#/definitions/error.response"
                         }
                     }
                 }
@@ -159,6 +285,28 @@ const docTemplate = `{
                 ],
                 "summary": "Show all sessions in cluster",
                 "operationId": "sessions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "UUID of cluster",
+                        "name": "cluster",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Firstly try to find from Cache",
+                        "name": "cache",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Entrypoint for cluster",
+                        "name": "entrypoint",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -169,13 +317,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/v1.response"
+                            "$ref": "#/definitions/error.response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/error.response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/v1.response"
+                            "$ref": "#/definitions/error.response"
                         }
                     }
                 }
@@ -183,7 +337,7 @@ const docTemplate = `{
         },
         "/cluster/list": {
             "get": {
-                "description": "Show all clusters with identifiers",
+                "description": "Show all clusters with data",
                 "produces": [
                     "application/json"
                 ],
@@ -192,6 +346,21 @@ const docTemplate = `{
                 ],
                 "summary": "Show clusters",
                 "operationId": "clusters",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "Firstly try to find from Cache",
+                        "name": "cache",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Entrypoint for cluster",
+                        "name": "entrypoint",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -199,10 +368,22 @@ const docTemplate = `{
                             "$ref": "#/definitions/v1.clusterResponse"
                         }
                     },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/error.response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/error.response"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/v1.response"
+                            "$ref": "#/definitions/error.response"
                         }
                     }
                 }
@@ -213,84 +394,321 @@ const docTemplate = `{
         "entity.Cluster": {
             "type": "object",
             "properties": {
+                "errth": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "exp": {
+                    "type": "integer",
+                    "example": 1200
+                },
                 "host": {
                     "type": "string",
                     "example": "localhost"
                 },
                 "id": {
                     "type": "string",
-                    "example": "UUID like"
+                    "example": "UUID"
+                },
+                "kpp": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "lb": {
+                    "type": "string",
+                    "example": "perfomance"
+                },
+                "lt": {
+                    "type": "integer",
+                    "example": 3000
+                },
+                "mms": {
+                    "type": "integer",
+                    "example": 50000
+                },
+                "mmts": {
+                    "type": "integer",
+                    "example": 600
                 },
                 "name": {
                     "type": "string",
-                    "example": "name as text"
+                    "example": "name"
                 },
                 "port": {
                     "type": "string",
                     "example": "1541"
+                },
+                "sftl": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "sl": {
+                    "type": "integer",
+                    "example": 0
                 }
             }
         },
         "entity.Connection": {
             "type": "object",
             "properties": {
+                "appid": {
+                    "type": "string",
+                    "example": "1CV8"
+                },
+                "blocked": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "cid": {
+                    "type": "integer",
+                    "example": 12345
+                },
+                "connected": {
+                    "type": "string",
+                    "example": "2023-08-10T11:40:55"
+                },
+                "host": {
+                    "type": "string",
+                    "example": "localhost"
+                },
+                "ib": {
+                    "type": "string",
+                    "example": "UUID"
+                },
                 "id": {
                     "type": "string",
-                    "example": "UUID like"
+                    "example": "UUID"
+                },
+                "proc": {
+                    "type": "string",
+                    "example": "UUID"
+                },
+                "sid": {
+                    "type": "integer",
+                    "example": 12345
                 }
             }
         },
         "entity.Infobase": {
             "type": "object",
             "properties": {
-                "cluster": {
-                    "type": "string",
-                    "example": "UUID like"
-                },
                 "desc": {
                     "type": "string",
-                    "example": "some comments"
+                    "example": "comments"
                 },
                 "id": {
                     "type": "string",
-                    "example": "UUID like"
+                    "example": "UUID"
                 },
                 "name": {
                     "type": "string",
-                    "example": "name as text"
+                    "example": "name"
                 }
             }
         },
         "entity.Session": {
             "type": "object",
             "properties": {
+                "active": {
+                    "type": "string",
+                    "example": "2023-08-10T14:04:43"
+                },
                 "appid": {
                     "type": "string",
-                    "example": "Application identifier"
+                    "example": "1CV8"
+                },
+                "blockdb": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "blockls": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "bytes": {
+                    "type": "integer",
+                    "example": 12345
+                },
+                "bytes5m": {
+                    "type": "integer",
+                    "example": 123
+                },
+                "bytesdb": {
+                    "type": "integer",
+                    "example": 123
+                },
+                "bytesdb5m": {
+                    "type": "integer",
+                    "example": 12
+                },
+                "calls": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "calls5m": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "conn": {
+                    "type": "string",
+                    "example": "UUID"
+                },
+                "cpu": {
+                    "type": "integer",
+                    "example": 1234
+                },
+                "cpu5m": {
+                    "type": "integer",
+                    "example": 12
+                },
+                "cpucur": {
+                    "type": "integer",
+                    "example": 123
+                },
+                "dbproc": {
+                    "type": "integer",
+                    "example": 123
+                },
+                "dbprocat": {
+                    "type": "string",
+                    "example": ""
+                },
+                "dbproci": {
+                    "type": "string",
+                    "example": ""
+                },
+                "dur": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "dur5m": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "durcur": {
+                    "type": "integer",
+                    "example": 80
+                },
+                "durcurdb": {
+                    "type": "integer",
+                    "example": 80
+                },
+                "durdb": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "durdb5m": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "dursvc": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "dursvc5m": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "dursvccur": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "hib": {
+                    "type": "string",
+                    "example": "yes/no"
+                },
+                "hibterm": {
+                    "type": "integer",
+                    "example": 3600
+                },
+                "hibtm": {
+                    "type": "integer",
+                    "example": 1200
                 },
                 "host": {
                     "type": "string",
-                    "example": "Host of the user"
+                    "example": "Host"
+                },
+                "ib": {
+                    "type": "string",
+                    "example": "UUID"
                 },
                 "id": {
                     "type": "string",
-                    "example": "UUID like"
+                    "example": "UUID"
                 },
-                "idbase": {
+                "loc": {
                     "type": "string",
-                    "example": "UUID of infobase"
+                    "example": "ru"
                 },
-                "idbconn": {
-                    "type": "string",
-                    "example": "UUID of connection"
+                "mem": {
+                    "type": "integer",
+                    "example": 123456
                 },
-                "idproc": {
+                "mem5m": {
+                    "type": "integer",
+                    "example": 1234
+                },
+                "memcur": {
+                    "type": "integer",
+                    "example": 12345
+                },
+                "proc": {
                     "type": "string",
-                    "example": "UUID of process"
+                    "example": "UUID"
+                },
+                "read": {
+                    "type": "integer",
+                    "example": 56789
+                },
+                "read5m": {
+                    "type": "integer",
+                    "example": 56
+                },
+                "readcur": {
+                    "type": "integer",
+                    "example": 5678
+                },
+                "sep": {
+                    "type": "string",
+                    "example": ""
+                },
+                "sid": {
+                    "type": "integer",
+                    "example": 12345
+                },
+                "started": {
+                    "type": "string",
+                    "example": "2023-08-10T14:04:43"
+                },
+                "svc": {
+                    "type": "string",
+                    "example": "Name"
                 },
                 "uname": {
                     "type": "string",
-                    "example": "Name of the user"
+                    "example": "UserName"
+                },
+                "write": {
+                    "type": "integer",
+                    "example": 123
+                },
+                "write5m": {
+                    "type": "integer",
+                    "example": 123
+                },
+                "writecur": {
+                    "type": "integer",
+                    "example": 123
+                }
+            }
+        },
+        "error.response": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "message"
                 }
             }
         },
@@ -324,15 +742,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/entity.Infobase"
                     }
-                }
-            }
-        },
-        "v1.response": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "type": "string",
-                    "example": "message"
                 }
             }
         },

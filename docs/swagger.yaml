@@ -2,62 +2,239 @@ basePath: /v1
 definitions:
   entity.Cluster:
     properties:
+      errth:
+        example: 0
+        type: integer
+      exp:
+        example: 1200
+        type: integer
       host:
         example: localhost
         type: string
       id:
-        example: UUID like
+        example: UUID
         type: string
+      kpp:
+        example: 0
+        type: integer
+      lb:
+        example: perfomance
+        type: string
+      lt:
+        example: 3000
+        type: integer
+      mms:
+        example: 50000
+        type: integer
+      mmts:
+        example: 600
+        type: integer
       name:
-        example: name as text
+        example: name
         type: string
       port:
         example: "1541"
         type: string
+      sftl:
+        example: 0
+        type: integer
+      sl:
+        example: 0
+        type: integer
     type: object
   entity.Connection:
     properties:
-      id:
-        example: UUID like
+      appid:
+        example: 1CV8
         type: string
+      blocked:
+        example: 0
+        type: integer
+      cid:
+        example: 12345
+        type: integer
+      connected:
+        example: 2023-08-10T11:40:55
+        type: string
+      host:
+        example: localhost
+        type: string
+      ib:
+        example: UUID
+        type: string
+      id:
+        example: UUID
+        type: string
+      proc:
+        example: UUID
+        type: string
+      sid:
+        example: 12345
+        type: integer
     type: object
   entity.Infobase:
     properties:
-      cluster:
-        example: UUID like
-        type: string
       desc:
-        example: some comments
+        example: comments
         type: string
       id:
-        example: UUID like
+        example: UUID
         type: string
       name:
-        example: name as text
+        example: name
         type: string
     type: object
   entity.Session:
     properties:
-      appid:
-        example: Application identifier
+      active:
+        example: 2023-08-10T14:04:43
         type: string
+      appid:
+        example: 1CV8
+        type: string
+      blockdb:
+        example: 0
+        type: integer
+      blockls:
+        example: 0
+        type: integer
+      bytes:
+        example: 12345
+        type: integer
+      bytes5m:
+        example: 123
+        type: integer
+      bytesdb:
+        example: 123
+        type: integer
+      bytesdb5m:
+        example: 12
+        type: integer
+      calls:
+        example: 5
+        type: integer
+      calls5m:
+        example: 2
+        type: integer
+      conn:
+        example: UUID
+        type: string
+      cpu:
+        example: 1234
+        type: integer
+      cpu5m:
+        example: 12
+        type: integer
+      cpucur:
+        example: 123
+        type: integer
+      dbproc:
+        example: 123
+        type: integer
+      dbprocat:
+        example: ""
+        type: string
+      dbproci:
+        example: ""
+        type: string
+      dur:
+        example: 100
+        type: integer
+      dur5m:
+        example: 100
+        type: integer
+      durcur:
+        example: 80
+        type: integer
+      durcurdb:
+        example: 80
+        type: integer
+      durdb:
+        example: 100
+        type: integer
+      durdb5m:
+        example: 100
+        type: integer
+      dursvc:
+        example: 0
+        type: integer
+      dursvc5m:
+        example: 0
+        type: integer
+      dursvccur:
+        example: 0
+        type: integer
+      hib:
+        example: yes/no
+        type: string
+      hibterm:
+        example: 3600
+        type: integer
+      hibtm:
+        example: 1200
+        type: integer
       host:
-        example: Host of the user
+        example: Host
+        type: string
+      ib:
+        example: UUID
         type: string
       id:
-        example: UUID like
+        example: UUID
         type: string
-      idbase:
-        example: UUID of infobase
+      loc:
+        example: ru
         type: string
-      idbconn:
-        example: UUID of connection
+      mem:
+        example: 123456
+        type: integer
+      mem5m:
+        example: 1234
+        type: integer
+      memcur:
+        example: 12345
+        type: integer
+      proc:
+        example: UUID
         type: string
-      idproc:
-        example: UUID of process
+      read:
+        example: 56789
+        type: integer
+      read5m:
+        example: 56
+        type: integer
+      readcur:
+        example: 5678
+        type: integer
+      sep:
+        example: ""
+        type: string
+      sid:
+        example: 12345
+        type: integer
+      started:
+        example: 2023-08-10T14:04:43
+        type: string
+      svc:
+        example: Name
         type: string
       uname:
-        example: Name of the user
+        example: UserName
+        type: string
+      write:
+        example: 123
+        type: integer
+      write5m:
+        example: 123
+        type: integer
+      writecur:
+        example: 123
+        type: integer
+    type: object
+  error.response:
+    properties:
+      error:
+        example: message
         type: string
     type: object
   v1.clusterResponse:
@@ -81,12 +258,6 @@ definitions:
           $ref: '#/definitions/entity.Infobase'
         type: array
     type: object
-  v1.response:
-    properties:
-      error:
-        example: message
-        type: string
-    type: object
   v1.sessionResponse:
     properties:
       sessions:
@@ -105,6 +276,21 @@ paths:
     get:
       description: Show all connections with identifiers for current cluster
       operationId: connections
+      parameters:
+      - description: UUID of cluster
+        in: path
+        name: cluster
+        required: true
+        type: string
+      - description: Firstly try to find from Cache
+        in: query
+        name: cache
+        type: boolean
+      - description: Entrypoint for cluster
+        in: query
+        name: entrypoint
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -115,11 +301,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/v1.response'
+            $ref: '#/definitions/error.response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/error.response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/v1.response'
+            $ref: '#/definitions/error.response'
       summary: Show all connections in cluster
       tags:
       - connection list
@@ -127,6 +317,26 @@ paths:
     get:
       description: Show all connections with identifiers for current infobase in cluster
       operationId: connectionsByInfobase
+      parameters:
+      - description: UUID of cluster
+        in: path
+        name: cluster
+        required: true
+        type: string
+      - description: UUID of infobase
+        in: path
+        name: infobase
+        required: true
+        type: string
+      - description: Firstly try to find from Cache
+        in: query
+        name: cache
+        type: boolean
+      - description: Entrypoint for cluster
+        in: query
+        name: entrypoint
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -137,11 +347,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/v1.response'
+            $ref: '#/definitions/error.response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/error.response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/v1.response'
+            $ref: '#/definitions/error.response'
       summary: Show all connections in infobase
       tags:
       - connection list infobase
@@ -149,6 +363,26 @@ paths:
     get:
       description: Show all sessions with identifiers for current infobase in cluster
       operationId: sessionsByInfobase
+      parameters:
+      - description: UUID of cluster
+        in: path
+        name: cluster
+        required: true
+        type: string
+      - description: UUID of infobase
+        in: path
+        name: infobase
+        required: true
+        type: string
+      - description: Firstly try to find from Cache
+        in: query
+        name: cache
+        type: boolean
+      - description: Entrypoint for cluster
+        in: query
+        name: entrypoint
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -159,11 +393,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/v1.response'
+            $ref: '#/definitions/error.response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/error.response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/v1.response'
+            $ref: '#/definitions/error.response'
       summary: Show all sessions in infobase
       tags:
       - session list infobase
@@ -171,6 +409,21 @@ paths:
     get:
       description: Show all infobases with identifiers for current cluster
       operationId: infobases
+      parameters:
+      - description: UUID of cluster
+        in: path
+        name: cluster
+        required: true
+        type: string
+      - description: Firstly try to find from Cache
+        in: query
+        name: cache
+        type: boolean
+      - description: Entrypoint for cluster
+        in: query
+        name: entrypoint
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -181,11 +434,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/v1.response'
+            $ref: '#/definitions/error.response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/error.response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/v1.response'
+            $ref: '#/definitions/error.response'
       summary: Show all infobases in cluster
       tags:
       - infobase list
@@ -193,6 +450,21 @@ paths:
     get:
       description: Show all sessions with identifiers for current cluster
       operationId: sessions
+      parameters:
+      - description: UUID of cluster
+        in: path
+        name: cluster
+        required: true
+        type: string
+      - description: Firstly try to find from Cache
+        in: query
+        name: cache
+        type: boolean
+      - description: Entrypoint for cluster
+        in: query
+        name: entrypoint
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -203,18 +475,32 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/v1.response'
+            $ref: '#/definitions/error.response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/error.response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/v1.response'
+            $ref: '#/definitions/error.response'
       summary: Show all sessions in cluster
       tags:
       - session list
   /cluster/list:
     get:
-      description: Show all clusters with identifiers
+      description: Show all clusters with data
       operationId: clusters
+      parameters:
+      - description: Firstly try to find from Cache
+        in: query
+        name: cache
+        type: boolean
+      - description: Entrypoint for cluster
+        in: query
+        name: entrypoint
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -222,10 +508,18 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/v1.clusterResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/error.response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/error.response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/v1.response'
+            $ref: '#/definitions/error.response'
       summary: Show clusters
       tags:
       - cluster list

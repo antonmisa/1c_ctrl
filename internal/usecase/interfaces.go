@@ -7,7 +7,7 @@ import (
 	"github.com/antonmisa/1cctl/internal/entity"
 )
 
-//go:generate mockgen -source=interfaces.go -destination=./mocks_test.go -package=usecase_test
+//go:generate go run github.com/vektra/mockery/v2@v2.32.0 --all
 
 type (
 	// Ctrl -.

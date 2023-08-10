@@ -11,7 +11,7 @@ import (
 )
 
 type commonRequestQuery struct {
-	Cache      bool   `form:"cache"`
+	Cache      bool   `form:"usecache"`
 	Entrypoint string `form:"entrypoint" binding:"required"`
 }
 

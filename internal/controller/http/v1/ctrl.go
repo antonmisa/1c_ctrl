@@ -39,14 +39,16 @@ type clusterResponse struct {
 }
 
 // @Summary     Show clusters
-// @Description Show all clusters with identifiers
+// @Description Show all clusters with data
 // @ID          clusters
 // @Tags  	    cluster list
 // @Produce     json
-// @Param		cache	query		bool			false	"Cache"
-// @Param       entrypoint query    string          "" 		"Entrypoint"
+// @Param		cache	    query	 bool			false	"Firstly try to find from Cache"
+// @Param       entrypoint  query    string         true 	"Entrypoint for cluster"
 // @Success     200 {object} clusterResponse
-// @Failure     500 {object} response
+// @Failure     400 {object} error.response
+// @Failure     404 {object} error.response
+// @Failure     500 {object} error.response
 // @Router      /cluster/list [get]
 func (r *ctrlRoutes) clusters(c *gin.Context) {
 	entrypoint := c.GetString(common.Entrypoint)
@@ -80,9 +82,13 @@ type infobaseResponse struct {
 // @ID          infobases
 // @Tags  	    infobase list
 // @Produce     json
+// @Param		cluster	    path	 string			true	"UUID of cluster"
+// @Param		cache	    query	 bool			false	"Firstly try to find from Cache"
+// @Param       entrypoint  query    string         true 	"Entrypoint for cluster"
 // @Success     200 {object} infobaseResponse
-// @Failure     400 {object} response
-// @Failure     500 {object} response
+// @Failure     400 {object} error.response
+// @Failure     404 {object} error.response
+// @Failure     500 {object} error.response
 // @Router      /cluster/:cluster/infobase/list [get]
 func (r *ctrlRoutes) infobases(c *gin.Context) {
 	var request infobaseRequest
@@ -126,9 +132,13 @@ type sessionResponse struct {
 // @ID          sessions
 // @Tags  	    session list
 // @Produce     json
+// @Param		cluster	    path	 string			true	"UUID of cluster"
+// @Param		cache	    query	 bool			false	"Firstly try to find from Cache"
+// @Param       entrypoint  query    string         true 	"Entrypoint for cluster"
 // @Success     200 {object} sessionResponse
-// @Failure     400 {object} response
-// @Failure     500 {object} response
+// @Failure     400 {object} error.response
+// @Failure     404 {object} error.response
+// @Failure     500 {object} error.response
 // @Router      /cluster/:cluster/session/list [get]
 func (r *ctrlRoutes) sessions(c *gin.Context) {
 	var request requestWoInfobase
@@ -169,9 +179,14 @@ type requestWInfobase struct {
 // @ID          sessionsByInfobase
 // @Tags  	    session list infobase
 // @Produce     json
+// @Param		cluster	    path	 string			true	"UUID of cluster"
+// @Param		infobase    path	 string			true	"UUID of infobase"
+// @Param		cache	    query	 bool			false	"Firstly try to find from Cache"
+// @Param       entrypoint  query    string         true 	"Entrypoint for cluster"
 // @Success     200 {object} sessionResponse
-// @Failure     400 {object} response
-// @Failure     500 {object} response
+// @Failure     400 {object} error.response
+// @Failure     404 {object} error.response
+// @Failure     500 {object} error.response
 // @Router      /cluster/:cluster/infobase/:infobase/session/list [get]
 func (r *ctrlRoutes) sessionsByInfobase(c *gin.Context) {
 	var request requestWInfobase
@@ -211,9 +226,13 @@ type connectionResponse struct {
 // @ID          connections
 // @Tags  	    connection list
 // @Produce     json
+// @Param		cluster	    path	 string			true	"UUID of cluster"
+// @Param		cache	    query	 bool			false	"Firstly try to find from Cache"
+// @Param       entrypoint  query    string         true 	"Entrypoint for cluster"
 // @Success     200 {object} connectionResponse
-// @Failure     400 {object} response
-// @Failure     500 {object} response
+// @Failure     400 {object} error.response
+// @Failure     404 {object} error.response
+// @Failure     500 {object} error.response
 // @Router      /cluster/:cluster/connection/list [get]
 func (r *ctrlRoutes) connections(c *gin.Context) {
 	var request requestWoInfobase
@@ -249,9 +268,14 @@ func (r *ctrlRoutes) connections(c *gin.Context) {
 // @ID          connectionsByInfobase
 // @Tags  	    connection list infobase
 // @Produce     json
+// @Param		cluster	    path	 string			true	"UUID of cluster"
+// @Param		infobase    path	 string			true	"UUID of infobase"
+// @Param		cache	    query	 bool			false	"Firstly try to find from Cache"
+// @Param       entrypoint  query    string         true 	"Entrypoint for cluster"
 // @Success     200 {object} connectionResponse
-// @Failure     400 {object} response
-// @Failure     500 {object} response
+// @Failure     400 {object} error.response
+// @Failure     404 {object} error.response
+// @Failure     500 {object} error.response
 // @Router      /cluster/:cluster/infobase/:infobase/connection/list [get]
 func (r *ctrlRoutes) connectionsByInfobase(c *gin.Context) {
 	var request requestWInfobase

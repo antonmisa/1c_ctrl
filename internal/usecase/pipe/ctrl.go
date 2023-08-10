@@ -15,23 +15,19 @@ import (
 )
 
 const (
-	initialSize int = 10
+	initialDataSize int = 10
+
+	initialPropertiesSizeSmall int = 15
+	initialPropertiesSizeBig   int = 60
 
 	defaultBlockTime time.Duration = 60
 
 	initialBlockLimitSize int = 50
 
 	formatDate string = "01-02-2006 15:04:05"
-
-	keyInfobase   string = "infobase"
-	keyConnection string = "connection"
-	keyProcess    string = "process"
-	keyHost       string = "host"
-	keyName       string = "name"
 )
 
 var (
-	ErrNotFound          = errors.New("key not found")
 	ErrInfobaseIsEmpty   = errors.New("infobase is empty")
 	ErrSessionIsEmpty    = errors.New("session is empty")
 	ErrConnectionIsEmpty = errors.New("connection is empty")
@@ -39,8 +35,6 @@ var (
 
 // CtrlPipe -.
 type CtrlPipe struct {
-	h Helper
-
 	pipe pipe.Piper
 }
 
@@ -49,7 +43,6 @@ var _ uc.CtrlPipe = (*CtrlPipe)(nil)
 // New -.
 func New(p pipe.Piper) *CtrlPipe {
 	ctrl := &CtrlPipe{
-		h:    Helper{},
 		pipe: p,
 	}
 
@@ -88,42 +81,42 @@ func (r *CtrlPipe) GetClusters(ctx context.Context, entrypoint string) ([]entity
 	go func() {
 		defer wg.Done()
 
-		var data, emptyData entity.Cluster
+		rawStrings := make([]string, 0, initialPropertiesSizeSmall)
 
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Text()
 
-			key, value, err := r.h.GetKeyValue(line, ':')
+			if line == "" {
+				var data entity.Cluster
 
-			if err != nil && errors.Is(err, ErrNotFound) {
+				err = entity.Unmarshal(rawStrings, &data)
+
+				if err != nil {
+					errs <- fmt.Errorf("ctrlpipe - getclusters - decoder.Unmarshal: %w", err)
+
+					return
+				}
+
+				datas <- data
+
+				rawStrings = rawStrings[:0]
 				continue
 			}
 
-			if err != nil && !errors.Is(err, ErrNotFound) {
-				errs <- fmt.Errorf("ctrlpipe - getclusters - error parsing line: %w", err)
+			rawStrings = append(rawStrings, line)
+		}
+
+		if len(rawStrings) > 0 {
+			var data entity.Cluster
+
+			err = entity.Unmarshal(rawStrings, &data)
+			if err != nil {
+				errs <- fmt.Errorf("ctrlpipe - getclusters - decoder.Unmarshal: %w", err)
 
 				return
 			}
 
-			switch key {
-			case "cluster":
-				if data != emptyData {
-					datas <- data
-				}
-
-				data = entity.Cluster{}
-				data.ID = value
-			case keyHost:
-				data.Host = value
-			case "port":
-				data.Port = value
-			case keyName:
-				data.Name = value
-			}
-		}
-
-		if data != emptyData {
 			datas <- data
 		}
 
@@ -145,7 +138,7 @@ func (r *CtrlPipe) GetClusters(ctx context.Context, entrypoint string) ([]entity
 
 	var errg error
 
-	rv := make([]entity.Cluster, 0, initialSize)
+	rv := make([]entity.Cluster, 0, initialDataSize)
 
 	num := 0
 
@@ -215,40 +208,42 @@ func (r *CtrlPipe) GetInfobases(ctx context.Context, entrypoint string, cluster 
 	go func() {
 		defer wg.Done()
 
-		var data, emptyData entity.Infobase
+		rawStrings := make([]string, 0, initialPropertiesSizeSmall)
 
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Text()
 
-			key, value, err := r.h.GetKeyValue(line, ':')
+			if line == "" {
+				var data entity.Infobase
 
-			if err != nil && errors.Is(err, ErrNotFound) {
+				err = entity.Unmarshal(rawStrings, &data)
+
+				if err != nil {
+					errs <- fmt.Errorf("ctrlpipe - getinfobases - decoder.Unmarshal: %w", err)
+
+					return
+				}
+
+				datas <- data
+
+				rawStrings = rawStrings[:0]
 				continue
 			}
 
-			if err != nil && !errors.Is(err, ErrNotFound) {
-				errs <- fmt.Errorf("ctrlpipe - getinfobases - error parsing line: %w", err)
+			rawStrings = append(rawStrings, line)
+		}
+
+		if len(rawStrings) > 0 {
+			var data entity.Infobase
+
+			err = entity.Unmarshal(rawStrings, &data)
+			if err != nil {
+				errs <- fmt.Errorf("ctrlpipe - getinfobases - decoder.Unmarshal: %w", err)
 
 				return
 			}
 
-			switch key {
-			case keyInfobase:
-				if data != emptyData {
-					datas <- data
-				}
-
-				data = entity.Infobase{}
-				data.ID = value
-			case "descr":
-				data.Desc = value
-			case keyName:
-				data.Name = value
-			}
-		}
-
-		if data != emptyData {
 			datas <- data
 		}
 
@@ -259,7 +254,7 @@ func (r *CtrlPipe) GetInfobases(ctx context.Context, entrypoint string, cluster 
 
 	var errg error
 
-	rv := make([]entity.Infobase, 0, initialSize)
+	rv := make([]entity.Infobase, 0, initialDataSize)
 
 	num := 0
 
@@ -331,48 +326,42 @@ func (r *CtrlPipe) GetSessions(ctx context.Context, entrypoint string, cluster e
 	go func() {
 		defer wg.Done()
 
-		var data, emptyData entity.Session
+		rawStrings := make([]string, 0, initialPropertiesSizeBig)
 
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Text()
 
-			key, value, err := r.h.GetKeyValue(line, ':')
+			if line == "" {
+				var data entity.Session
 
-			if err != nil && errors.Is(err, ErrNotFound) {
+				err = entity.Unmarshal(rawStrings, &data)
+
+				if err != nil {
+					errs <- fmt.Errorf("ctrlpipe - getsessions - decoder.Unmarshal: %w", err)
+
+					return
+				}
+
+				datas <- data
+
+				rawStrings = rawStrings[:0]
 				continue
 			}
 
-			if err != nil && !errors.Is(err, ErrNotFound) {
-				errs <- fmt.Errorf("ctrlpipe - getsessions - error parsing line: %w", err)
+			rawStrings = append(rawStrings, line)
+		}
+
+		if len(rawStrings) > 0 {
+			var data entity.Session
+
+			err = entity.Unmarshal(rawStrings, &data)
+			if err != nil {
+				errs <- fmt.Errorf("ctrlpipe - getsessions - decoder.Unmarshal: %w", err)
 
 				return
 			}
 
-			switch key {
-			case "session":
-				if data != emptyData {
-					datas <- data
-				}
-
-				data = entity.Session{}
-				data.ID = value
-			case keyInfobase:
-				data.InfobaseID = value
-			case keyConnection:
-				data.ConnectionID = value
-			case keyProcess:
-				data.ProcessID = value
-			case "user-name":
-				data.UserName = value
-			case keyHost:
-				data.Host = value
-			case "app-id":
-				data.AppID = value
-			}
-		}
-
-		if data != emptyData {
 			datas <- data
 		}
 
@@ -383,7 +372,7 @@ func (r *CtrlPipe) GetSessions(ctx context.Context, entrypoint string, cluster e
 
 	var errg error
 
-	rv := make([]entity.Session, 0, initialSize)
+	rv := make([]entity.Session, 0, initialDataSize)
 
 	num := 0
 
@@ -664,44 +653,42 @@ func (r *CtrlPipe) GetConnections(ctx context.Context, entrypoint string, cluste
 	go func() {
 		defer wg.Done()
 
-		var data, emptyData entity.Connection
+		rawStrings := make([]string, 0, initialPropertiesSizeSmall)
 
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Text()
 
-			key, value, err := r.h.GetKeyValue(line, ':')
+			if line == "" {
+				var data entity.Connection
 
-			if err != nil && errors.Is(err, ErrNotFound) {
+				err = entity.Unmarshal(rawStrings, &data)
+
+				if err != nil {
+					errs <- fmt.Errorf("ctrlpipe - getconnections - decoder.Unmarshal: %w", err)
+
+					return
+				}
+
+				datas <- data
+
+				rawStrings = rawStrings[:0]
 				continue
 			}
 
-			if err != nil && !errors.Is(err, ErrNotFound) {
-				errs <- fmt.Errorf("ctrlpipe - getconnections - error parsing line: %w", err)
+			rawStrings = append(rawStrings, line)
+		}
+
+		if len(rawStrings) > 0 {
+			var data entity.Connection
+
+			err = entity.Unmarshal(rawStrings, &data)
+			if err != nil {
+				errs <- fmt.Errorf("ctrlpipe - getconnections - decoder.Unmarshal: %w", err)
 
 				return
 			}
 
-			switch key {
-			case keyConnection:
-				if data != emptyData {
-					datas <- data
-				}
-
-				data = entity.Connection{}
-				data.ID = value
-			case keyHost:
-				data.Host = value
-			case keyProcess:
-				data.ProcessID = value
-			case keyInfobase:
-				data.InfobaseID = value
-			case "application":
-				data.AppID = value
-			}
-		}
-
-		if data != emptyData {
 			datas <- data
 		}
 
@@ -712,7 +699,7 @@ func (r *CtrlPipe) GetConnections(ctx context.Context, entrypoint string, cluste
 
 	var errg error
 
-	rv := make([]entity.Connection, 0, initialSize)
+	rv := make([]entity.Connection, 0, initialDataSize)
 
 	num := 0
 
