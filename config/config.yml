@@ -9,6 +9,10 @@ http:
 cache:
   ttl: 60s
 
+trace:
+  enable: true
+  endpoint: "http://localhost:14268/api/traces"
+
 logger:
   level: "debug"
   path: "./logs/current.log"  

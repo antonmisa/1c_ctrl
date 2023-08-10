@@ -3,6 +3,8 @@ package v1
 
 import (
 	"github.com/gin-contrib/pprof"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"go.opentelemetry.io/otel/trace"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -25,10 +27,11 @@ import (
 // @version     1.0
 // @host        localhost:8080
 // @BasePath    /v1
-func NewRouter(handler *gin.Engine, l logger.Interface, t usecase.Ctrl) {
+func NewRouter(handler *gin.Engine, l logger.Interface, t usecase.Ctrl, tr trace.Tracer) {
 	// Options
 	handler.Use(mwlogger.Logger(l))
 	handler.Use(gin.Recovery())
+	handler.Use(otelgin.Middleware("1ctrl-service"))
 
 	// Pprof
 	pprof.Register(handler)
@@ -48,6 +51,6 @@ func NewRouter(handler *gin.Engine, l logger.Interface, t usecase.Ctrl) {
 	{
 		h.Use(commonqueryparams.UseCommonQueryParams(l))
 
-		newCtrlRoutes(h, t, l)
+		newCtrlRoutes(h, t, l, tr)
 	}
 }

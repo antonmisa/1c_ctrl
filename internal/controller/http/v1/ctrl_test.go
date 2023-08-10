@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"errors"
+	"go.opentelemetry.io/otel"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -104,8 +105,10 @@ func TestClustersRoute(t *testing.T) {
 				Return(tc.ctrlMockResult, tc.ctrlMockError).
 				Maybe()
 
+			tracer := otel.GetTracerProvider().Tracer("1ctrl-service")
+
 			handler := gin.New()
-			NewRouter(handler, logMock, ctrlMock)
+			NewRouter(handler, logMock, ctrlMock, tracer)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest(tc.method, tc.uri, nil)
@@ -212,8 +215,10 @@ func TestInfobasesRoute(t *testing.T) {
 				Return(tc.ctrlMockResult, tc.ctrlMockError).
 				Maybe()
 
+			tracer := otel.GetTracerProvider().Tracer("1ctrl-service")
+
 			handler := gin.New()
-			NewRouter(handler, logMock, ctrlMock)
+			NewRouter(handler, logMock, ctrlMock, tracer)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest(tc.method, tc.uri, nil)
@@ -321,8 +326,10 @@ func TestSessionsRoute(t *testing.T) {
 				Return(tc.ctrlMockResult, tc.ctrlMockError).
 				Maybe()
 
+			tracer := otel.GetTracerProvider().Tracer("1ctrl-service")
+
 			handler := gin.New()
-			NewRouter(handler, logMock, ctrlMock)
+			NewRouter(handler, logMock, ctrlMock, tracer)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest(tc.method, tc.uri, nil)
@@ -430,8 +437,10 @@ func TestSessionsByInfobaseRoute(t *testing.T) {
 				Return(tc.ctrlMockResult, tc.ctrlMockError).
 				Maybe()
 
+			tracer := otel.GetTracerProvider().Tracer("1ctrl-service")
+
 			handler := gin.New()
-			NewRouter(handler, logMock, ctrlMock)
+			NewRouter(handler, logMock, ctrlMock, tracer)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest(tc.method, tc.uri, nil)
@@ -539,8 +548,10 @@ func TestConnectionsRoute(t *testing.T) {
 				Return(tc.ctrlMockResult, tc.ctrlMockError).
 				Maybe()
 
+			tracer := otel.GetTracerProvider().Tracer("1ctrl-service")
+
 			handler := gin.New()
-			NewRouter(handler, logMock, ctrlMock)
+			NewRouter(handler, logMock, ctrlMock, tracer)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest(tc.method, tc.uri, nil)
@@ -648,8 +659,10 @@ func TestConnectionsByInfobaseRoute(t *testing.T) {
 				Return(tc.ctrlMockResult, tc.ctrlMockError).
 				Maybe()
 
+			tracer := otel.GetTracerProvider().Tracer("1ctrl-service")
+
 			handler := gin.New()
-			NewRouter(handler, logMock, ctrlMock)
+			NewRouter(handler, logMock, ctrlMock, tracer)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest(tc.method, tc.uri, nil)

@@ -1,6 +1,8 @@
 package v1
 
 import (
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -16,10 +18,11 @@ import (
 type ctrlRoutes struct {
 	c usecase.Ctrl
 	l logger.Interface
+	t trace.Tracer
 }
 
-func newCtrlRoutes(handler *gin.RouterGroup, t usecase.Ctrl, l logger.Interface) {
-	r := &ctrlRoutes{t, l}
+func newCtrlRoutes(handler *gin.RouterGroup, t usecase.Ctrl, l logger.Interface, tr trace.Tracer) {
+	r := &ctrlRoutes{t, l, tr}
 
 	h := handler.Group("/cluster")
 	{
@@ -51,20 +54,30 @@ type clusterResponse struct {
 // @Failure     500 {object} error.response
 // @Router      /cluster/list [get]
 func (r *ctrlRoutes) clusters(c *gin.Context) {
+	ctx, span := r.t.Start(c.Request.Context(), "clusters")
+	defer span.End()
+
 	entrypoint := c.GetString(common.Entrypoint)
 
 	args := map[string]any{
 		common.UseCache: c.MustGet(common.UseCache),
 	}
 
-	clusters, err := r.c.Clusters(c.Request.Context(), entrypoint, args)
+	span.AddEvent("get list of clusters")
+
+	clusters, err := r.c.Clusters(ctx, entrypoint, args)
 
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+
 		r.l.Error(err, "http - v1 - clusters - r.c.Clusters")
 		v1e.ErrorResponse(c, http.StatusInternalServerError, "internal problems")
 
 		return
 	}
+
+	span.AddEvent("generate json response")
 
 	c.JSON(http.StatusOK, clusterResponse{clusters})
 }
@@ -91,8 +104,17 @@ type infobaseResponse struct {
 // @Failure     500 {object} error.response
 // @Router      /cluster/:cluster/infobase/list [get]
 func (r *ctrlRoutes) infobases(c *gin.Context) {
+	ctx, span := r.t.Start(c.Request.Context(), "infobases")
+	defer span.End()
+
 	var request infobaseRequest
+
+	span.AddEvent("binding incoming params")
+
 	if err := c.ShouldBindUri(&request); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+
 		r.l.Error(err, "http - v1 - infobases")
 		v1e.ErrorResponse(c, http.StatusBadRequest, "invalid request parameters")
 
@@ -108,13 +130,20 @@ func (r *ctrlRoutes) infobases(c *gin.Context) {
 
 	clusterCred, _ := c.MustGet(common.ClusterCred).(entity.Credentials)
 
-	infobases, err := r.c.Infobases(c.Request.Context(), entrypoint, entity.Cluster{ID: request.Cluster}, clusterCred, args)
+	span.AddEvent("get list of infobases")
+
+	infobases, err := r.c.Infobases(ctx, entrypoint, entity.Cluster{ID: request.Cluster}, clusterCred, args)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+
 		r.l.Error(err, "http - v1 - infobases")
 		v1e.ErrorResponse(c, http.StatusInternalServerError, "internal problems")
 
 		return
 	}
+
+	span.AddEvent("generate json response")
 
 	c.JSON(http.StatusOK, infobaseResponse{infobases})
 }
@@ -141,8 +170,17 @@ type sessionResponse struct {
 // @Failure     500 {object} error.response
 // @Router      /cluster/:cluster/session/list [get]
 func (r *ctrlRoutes) sessions(c *gin.Context) {
+	ctx, span := r.t.Start(c.Request.Context(), "sessions")
+	defer span.End()
+
 	var request requestWoInfobase
+
+	span.AddEvent("binding incoming params")
+
 	if err := c.ShouldBindUri(&request); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+
 		r.l.Error(err, "http - v1 - sessions")
 		v1e.ErrorResponse(c, http.StatusBadRequest, "invalid request parameters")
 
@@ -158,13 +196,20 @@ func (r *ctrlRoutes) sessions(c *gin.Context) {
 
 	clusterCred, _ := c.MustGet(common.ClusterCred).(entity.Credentials)
 
-	sessions, err := r.c.Sessions(c.Request.Context(), entrypoint, entity.Cluster{ID: request.Cluster}, clusterCred, entity.Infobase{}, args)
+	span.AddEvent("get list of sessions")
+
+	sessions, err := r.c.Sessions(ctx, entrypoint, entity.Cluster{ID: request.Cluster}, clusterCred, entity.Infobase{}, args)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+
 		r.l.Error(err, "http - v1 - sessions")
 		v1e.ErrorResponse(c, http.StatusInternalServerError, "internal problems")
 
 		return
 	}
+
+	span.AddEvent("generate json response")
 
 	c.JSON(http.StatusOK, sessionResponse{sessions})
 }
@@ -189,8 +234,17 @@ type requestWInfobase struct {
 // @Failure     500 {object} error.response
 // @Router      /cluster/:cluster/infobase/:infobase/session/list [get]
 func (r *ctrlRoutes) sessionsByInfobase(c *gin.Context) {
+	ctx, span := r.t.Start(c.Request.Context(), "sessions")
+	defer span.End()
+
 	var request requestWInfobase
+
+	span.AddEvent("binding incoming params")
+
 	if err := c.ShouldBindUri(&request); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+
 		r.l.Error(err, "http - v1 - sessionsByInfobase")
 		v1e.ErrorResponse(c, http.StatusBadRequest, "invalid request parameters")
 
@@ -206,13 +260,20 @@ func (r *ctrlRoutes) sessionsByInfobase(c *gin.Context) {
 
 	clusterCred, _ := c.MustGet(common.ClusterCred).(entity.Credentials)
 
-	sessions, err := r.c.Sessions(c.Request.Context(), entrypoint, entity.Cluster{ID: request.Cluster}, clusterCred, entity.Infobase{ID: request.Infobase}, args)
+	span.AddEvent("get list of sessions")
+
+	sessions, err := r.c.Sessions(ctx, entrypoint, entity.Cluster{ID: request.Cluster}, clusterCred, entity.Infobase{ID: request.Infobase}, args)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+
 		r.l.Error(err, "http - v1 - sessionsByInfobase")
 		v1e.ErrorResponse(c, http.StatusInternalServerError, "internal problems")
 
 		return
 	}
+
+	span.AddEvent("generate json response")
 
 	c.JSON(http.StatusOK, sessionResponse{sessions})
 }
@@ -235,8 +296,17 @@ type connectionResponse struct {
 // @Failure     500 {object} error.response
 // @Router      /cluster/:cluster/connection/list [get]
 func (r *ctrlRoutes) connections(c *gin.Context) {
+	ctx, span := r.t.Start(c.Request.Context(), "sessions")
+	defer span.End()
+
 	var request requestWoInfobase
+
+	span.AddEvent("binding incoming params")
+
 	if err := c.ShouldBindUri(&request); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+
 		r.l.Error(err, "http - v1 - connections")
 		v1e.ErrorResponse(c, http.StatusBadRequest, "invalid request parameters")
 
@@ -252,13 +322,20 @@ func (r *ctrlRoutes) connections(c *gin.Context) {
 
 	clusterCred, _ := c.MustGet(common.ClusterCred).(entity.Credentials)
 
-	connections, err := r.c.Connections(c.Request.Context(), entrypoint, entity.Cluster{ID: request.Cluster}, clusterCred, entity.Infobase{}, args)
+	span.AddEvent("get list of connections")
+
+	connections, err := r.c.Connections(ctx, entrypoint, entity.Cluster{ID: request.Cluster}, clusterCred, entity.Infobase{}, args)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+
 		r.l.Error(err, "http - v1 - connections")
 		v1e.ErrorResponse(c, http.StatusInternalServerError, "internal problems")
 
 		return
 	}
+
+	span.AddEvent("generate json response")
 
 	c.JSON(http.StatusOK, connectionResponse{connections})
 }
@@ -278,8 +355,17 @@ func (r *ctrlRoutes) connections(c *gin.Context) {
 // @Failure     500 {object} error.response
 // @Router      /cluster/:cluster/infobase/:infobase/connection/list [get]
 func (r *ctrlRoutes) connectionsByInfobase(c *gin.Context) {
+	ctx, span := r.t.Start(c.Request.Context(), "sessions")
+	defer span.End()
+
 	var request requestWInfobase
+
+	span.AddEvent("binding incoming params")
+
 	if err := c.ShouldBindUri(&request); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+
 		r.l.Error(err, "http - v1 - sessionsByInfobase")
 		v1e.ErrorResponse(c, http.StatusBadRequest, "invalid request parameters")
 
@@ -295,8 +381,13 @@ func (r *ctrlRoutes) connectionsByInfobase(c *gin.Context) {
 
 	clusterCred, _ := c.MustGet(common.ClusterCred).(entity.Credentials)
 
-	connections, err := r.c.Connections(c.Request.Context(), entrypoint, entity.Cluster{ID: request.Cluster}, clusterCred, entity.Infobase{ID: request.Infobase}, args)
+	span.AddEvent("get list of connections")
+
+	connections, err := r.c.Connections(ctx, entrypoint, entity.Cluster{ID: request.Cluster}, clusterCred, entity.Infobase{ID: request.Infobase}, args)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+
 		r.l.Error(err, "http - v1 - sessionsByInfobase")
 		v1e.ErrorResponse(c, http.StatusInternalServerError, "internal problems")
 

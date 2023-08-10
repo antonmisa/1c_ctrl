@@ -2,12 +2,13 @@ package app
 
 import (
 	"fmt"
+	"github.com/antonmisa/1cctl/internal/app/tracing"
+	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
-
-	"github.com/gin-gonic/gin"
 
 	"github.com/antonmisa/1cctl/config"
 	v1 "github.com/antonmisa/1cctl/internal/controller/http/v1"
@@ -27,7 +28,7 @@ func Run(cfg *config.Config) {
 		l.Fatal(fmt.Errorf("app - Run - logger.New: %w", err))
 	}
 
-	c, err := cache.New(cfg.Cache.TTL * time.Minute)
+	c, err := cache.New(cfg.Cache.TTL)
 	if err != nil {
 		l.Fatal(fmt.Errorf("app - Run - cache.New: %w", err))
 	}
@@ -50,9 +51,20 @@ func Run(cfg *config.Config) {
 		cb,
 	)
 
+	// Trace start
+	tp, err := tracing.JaegerTraceProvider(cfg.Trace.Endpoint)
+	if err != nil {
+		l.Fatal(fmt.Errorf("app - Run - tracing.JaegerTraceProvider: %w", err))
+	}
+
+	if cfg.Trace.Enable {
+		otel.SetTracerProvider(tp)
+		otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+	}
+
 	// HTTP Server
 	handler := gin.New()
-	v1.NewRouter(handler, l, ctrlUseCase)
+	v1.NewRouter(handler, l, ctrlUseCase, tp.Tracer("1ctrl_main_trace"))
 	httpServer := httpserver.New(handler, httpserver.Port(cfg.HTTP.Port))
 
 	// Waiting signal

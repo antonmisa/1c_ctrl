@@ -14,6 +14,7 @@ type Config struct {
 	App   `yaml:"app"`
 	Cache `yaml:"cache"`
 	HTTP  `yaml:"http"`
+	Trace `yaml:"trace"`
 	Log   `yaml:"logger"`
 }
 
@@ -33,6 +34,12 @@ type Cache struct {
 // HTTP -.
 type HTTP struct {
 	Port string `env-required:"true" yaml:"port" env:"HTTP_PORT"`
+}
+
+// Trace -.
+type Trace struct {
+	Enable   bool   `env-required:"true" yaml:"enable"`
+	Endpoint string `yaml:"endpoint"`
 }
 
 // Log -.
@@ -83,6 +90,10 @@ func Prepare() error {
 		},
 		HTTP{
 			Port: "8080",
+		},
+		Trace{
+			Enable:   false,
+			Endpoint: "http://localhost:14268/api/traces",
 		},
 		Log{
 			Level: "debug",
