@@ -2,6 +2,7 @@
 package v1
 
 import (
+	"github.com/gin-contrib/pprof"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -28,6 +29,9 @@ func NewRouter(handler *gin.Engine, l logger.Interface, t usecase.Ctrl) {
 	// Options
 	handler.Use(mwlogger.Logger(l))
 	handler.Use(gin.Recovery())
+
+	// Pprof
+	pprof.Register(handler)
 
 	// Swagger
 	swaggerHandler := ginSwagger.DisablingWrapHandler(swaggerFiles.Handler, "DISABLE_SWAGGER_HTTP_HANDLER")
